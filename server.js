@@ -303,7 +303,16 @@ function routes() {
   /* landlord mailbox */
   const mailLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many emails sent in the last hour. Try again later.' } });
   const notSetUp = res => res.status(503).json({ error: 'Email isn’t connected yet. Add MAIL_USER and MAIL_PASSWORD in Railway → Variables.' });
-  const mailError = (res, e) => { console.warn('Mail:', e.message); res.status(502).json({ error: /auth|login|credential/i.test(e.message) ? 'The mailbox refused the password. Check MAIL_PASSWORD in Railway.' : 'Couldn’t reach the mailbox. Try again in a moment.' }); };
+  // Turn mail errors into something the landlord can act on, with the technical reason in brackets.
+  const mailError = (res, e) => {
+    const why = [e.responseText, e.response, e.code, e.message].filter(Boolean).join(' / ').slice(0, 200);
+    console.warn('Mail error:', why);
+    let msg;
+    if (e.authenticationFailed || e.code === 'EAUTH' || /auth|login|credential|password/i.test(why)) msg = `The mailbox refused to sign in. Check MAIL_USER is ${mail.address()} and MAIL_PASSWORD is the password you set in IONOS (no spaces before or after it).`;
+    else if (/ETIMEDOUT|ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|timeout|ESOCKET/i.test(why)) msg = 'Couldn’t connect to the mail server. If this keeps happening, the hosting may be blocking the connection.';
+    else msg = 'The mailbox returned an error.';
+    res.status(502).json({ error: `${msg} (${why})` });
+  };
   admin.get('/mail/status', (req, res) => res.json({ enabled: mail.enabled(), address: mail.enabled() ? mail.address() : null }));
   admin.get('/mail/:folder', wrap(async (req, res) => {
     if (!mail.enabled()) return notSetUp(res);
