@@ -1029,6 +1029,15 @@ function lEmail() {
   return `<div class="row" style="justify-content:space-between"><div class="filters">${f('inbox', 'Inbox')}${f('sent', 'Sent')}<button type="button" data-act="mail-refresh">${mailState.loading ? 'Loading…' : 'Refresh'}</button></div>
       <div class="row"><span class="muted mono" style="font-size:13px">${esc(mailState.address)}</span><button class="btn primary" data-act="mail-new">New email</button></div></div>
     ${mailState.error ? `<div class="empty" style="color:var(--danger)">${esc(mailState.error)}</div>` : ''}
+    ${mailState.sendVia === 'smtp' ? `<details class="panel" style="padding:12px 16px"><summary style="cursor:pointer;font-weight:600">Sending not working? Connect Resend (free)</summary>
+      <ol style="margin:10px 0 0;padding-left:20px;display:grid;gap:6px;font-size:14px">
+        <li>Sign up at <a href="https://resend.com" target="_blank" rel="noopener">resend.com</a> (free plan).</li>
+        <li>In Resend, go to <b>Domains → Add domain</b>, enter <span class="mono">theoldmillkineton.co.uk</span>, and choose a <b>Europe</b> region if offered.</li>
+        <li>Resend lists a few DNS records. Add each one in <b>IONOS → Domains &amp; SSL → theoldmillkineton.co.uk → DNS</b>, then click <b>Verify</b> in Resend.</li>
+        <li>In Resend, go to <b>API Keys → Create API key</b> (sending access) and copy it.</li>
+        <li>In Railway → <b>Variables</b>, add <span class="mono">RESEND_API_KEY</span> with that key.</li>
+      </ol>
+      <p class="muted" style="font-size:13px;margin-top:8px">Your emails still come from ${esc(mailState.address)}, replies still arrive in your IONOS inbox, and copies still go in Sent.</p></details>` : ''}
     ${!L ? '<div class="empty">Loading your emails…</div>' : !L.length ? `<div class="empty">No emails in ${mailState.folder === 'sent' ? 'Sent' : 'your inbox'} yet.</div>` : `<div class="scroll"><table class="t mail">
       <thead><tr><th>${mailState.folder === 'sent' ? 'To' : 'From'}</th><th>Subject</th><th style="text-align:right">Date</th></tr></thead><tbody>
       ${L.map(m => `<tr class="${m.seen ? '' : 'unread'}" data-act="mail-open" data-uid="${m.uid}" tabindex="0" style="cursor:pointer">
@@ -1036,6 +1045,18 @@ function lEmail() {
       </tbody></table></div>`}`;
 }
 let openMail = null;
+// The email's own HTML, in a frame that can't run code. Pictures from other websites are blocked by the page's security rules.
+const mailDoc = html => `<!doctype html><html><head><meta charset="utf-8"><base target="_blank"><style>html,body{background:#fff;color:#222}body{margin:14px;font:15px/1.5 Arial,Helvetica,sans-serif;word-wrap:break-word}img{max-width:100%;height:auto}table{max-width:100%}</style></head><body>${html}</body></html>`;
+const fileSize = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+function attachmentsHTML(m) {
+  const list = (m.attachments || []).filter(a => !(a.inline && m.html));
+  if (!list.length) return '';
+  const url = (a, dl) => `/api/admin/mail/${mailState.folder}/${m.uid}/attachment/${a.index}${dl ? '?download=1' : ''}`;
+  return `<div style="display:grid;gap:8px"><span class="eyebrow">Attachments (${list.length})</span><div class="atts">${list.map(a => `
+    <div class="att">${/^image\//i.test(a.contentType) && a.previewable ? `<a href="${url(a)}" target="_blank" rel="noopener"><img src="${url(a)}" alt="${esc(a.filename)}" loading="lazy"></a>` : `<div class="att-icon" aria-hidden="true">${/pdf/i.test(a.contentType) ? 'PDF' : esc((a.filename.split('.').pop() || 'FILE').slice(0, 4).toUpperCase())}</div>`}
+      <div class="att-name" title="${esc(a.filename)}">${esc(a.filename)}</div><div class="muted" style="font-size:12px">${fileSize(a.size)}</div>
+      <div class="row" style="gap:6px">${a.previewable ? `<a class="btn sm" href="${url(a)}" target="_blank" rel="noopener">Preview</a>` : ''}<a class="btn sm" href="${url(a, true)}" download>Download</a></div></div>`).join('')}</div></div>`;
+}
 async function mailOpen(uid) {
   openSheet('<header><h2>Opening…</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header><p class="muted">Loading the message…</p>');
   try {
@@ -1044,28 +1065,86 @@ async function mailOpen(uid) {
     const row = (mailState.list || []).find(x => x.uid === Number(uid)); if (row && !row.seen) { row.seen = true; mailState.unread = Math.max(0, mailState.unread - 1); render(); }
     openSheet(`<header><h2 style="font-size:24px">${esc(m.subject)}</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header>
       <div class="list" style="font-size:13.5px"><div><span class="muted">From</span><span>${esc(m.from)}</span></div><div><span class="muted">To</span><span>${esc(m.to)}</span></div>${m.cc ? `<div><span class="muted">Cc</span><span>${esc(m.cc)}</span></div>` : ''}<div><span class="muted">Date</span><span>${esc(new Date(m.date).toLocaleString('en-GB'))}</span></div></div>
-      <pre class="draft" style="max-height:50vh;overflow:auto;font-family:var(--f-body);font-size:14.5px">${esc(m.text || '(This email has no text version. Open it in IONOS Webmail to see it.)')}</pre>
-      ${m.attachments.length ? `<p class="muted" style="font-size:13px">Attachments (open in IONOS Webmail): ${m.attachments.map(a => esc(a.filename)).join(', ')}</p>` : ''}
+      ${m.html ? `<iframe class="mailframe" title="Email: ${esc(m.subject)}" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" srcdoc="${esc(mailDoc(m.html))}"></iframe>`
+        : `<pre class="draft" style="max-height:50vh;overflow:auto;font-family:var(--f-body);font-size:14.5px">${esc(m.text || '(This email is empty.)')}</pre>`}
+      ${attachmentsHTML(m)}
       <footer><button class="btn" data-act="close">Close</button>${mailState.folder === 'inbox' ? '<button class="btn primary" data-act="mail-reply">Reply</button>' : ''}</footer>`);
+    $('#sheet').classList.add('wide');
   } catch (e) { openSheet(`<header><h2>Couldn't open it</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header><p>${esc(e.message)}</p>`); }
 }
-function mailCompose({to = '', subject = '', text = '', inReplyTo, references, onSent} = {}) {
-  openForm({
-    title: inReplyTo ? 'Reply' : 'New email',
-    intro: `From <span class="mono">${esc(mailState.address)}</span>`,
-    fields: [
-      {id:'to', label:'To', value: to, required: true, full: true, placeholder: 'name@example.com (separate several with commas)'},
-      {id:'subject', label:'Subject', value: subject, required: true, full: true},
-      {id:'text', label:'Message', type:'textarea', rows: 10, value: text, required: true, full: true}
-    ],
-    submit: 'Send',
-    onSubmit: async v => {
-      await api('POST', '/api/admin/mail/send', {...v, inReplyTo, references});
-      toast('Email sent');
-      if (onSent) await onSent();
-      if (mailState.folder === 'sent') loadMail(true);
-    }
+const textToHtml = t => esc(t).replace(/\n/g, '<br>');
+let composeCtx = null;
+function mailCompose({to = '', subject = '', text = '', html = '', inReplyTo, references, onSent} = {}) {
+  composeCtx = {inReplyTo, references, onSent};
+  const fonts = [['', 'Font'], ['Arial', 'Arial'], ['Georgia', 'Georgia'], ['Times New Roman', 'Times New Roman'], ['Verdana', 'Verdana'], ['Trebuchet MS', 'Trebuchet'], ['Courier New', 'Courier New']];
+  const sizes = [['', 'Size'], ['2', 'Small'], ['3', 'Normal'], ['5', 'Large'], ['6', 'Huge']];
+  const b = (cmd, label, title) => `<button type="button" class="tb" data-cmd="${cmd}" title="${title}" aria-label="${title}">${label}</button>`;
+  openSheet(`<form id="mailform" novalidate>
+    <header><h2>${inReplyTo ? 'Reply' : 'New email'}</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header>
+    <p class="muted" style="font-size:13.5px">From <span class="mono">${esc(mailState.address)}</span></p>
+    <label class="field"><span>To *</span><input id="mail-to" value="${esc(to)}" placeholder="name@example.com (separate several with commas)"></label>
+    <label class="field"><span>Subject *</span><input id="mail-subject" value="${esc(subject)}"></label>
+    <div class="field"><span>Message *</span>
+      <div class="toolbar" role="toolbar" aria-label="Formatting">
+        <select id="mail-font" aria-label="Font">${fonts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+        <select id="mail-size" aria-label="Text size">${sizes.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+        ${b('bold', '<b>B</b>', 'Bold')}${b('italic', '<i>I</i>', 'Italic')}${b('underline', '<u>U</u>', 'Underline')}
+        <label class="tb tb-colour" title="Text colour">A<input type="color" id="mail-colour" value="#1d5a45" aria-label="Text colour"></label>
+        ${b('insertUnorderedList', '• List', 'Bullet list')}${b('insertOrderedList', '1. List', 'Numbered list')}${b('createLink', 'Link', 'Add a link')}${b('removeFormat', 'Clear', 'Clear formatting')}
+      </div>
+      <div id="mail-editor" class="editor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Message">${html || textToHtml(text) || '<p><br></p>'}</div>
+    </div>
+    <p class="form-err" id="form-err" hidden></p>
+    <footer><button type="button" class="btn ghost" data-act="close">Cancel</button><button type="submit" class="btn primary">Send</button></footer>
+  </form>`);
+  $('#sheet').classList.add('wide');
+  const ed = $('#mail-editor');
+  try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
+  // Toolbar buttons keep the cursor in the message while they're clicked.
+  $('#sheet .toolbar').addEventListener('mousedown', e => { if (e.target.closest('button.tb')) e.preventDefault(); });
+  $('#sheet .toolbar').addEventListener('click', e => {
+    const btn = e.target.closest('button.tb'); if (!btn) return;
+    ed.focus();
+    if (btn.dataset.cmd === 'createLink') { const sel = window.getSelection(); if (!sel || sel.isCollapsed) { toast('Select some text first, then click Link.'); return; } openLinkPrompt(); return; }
+    document.execCommand(btn.dataset.cmd, false, null);
   });
+  $('#mail-font').addEventListener('change', e => { ed.focus(); if (e.target.value) document.execCommand('fontName', false, e.target.value); e.target.value = ''; });
+  $('#mail-size').addEventListener('change', e => { ed.focus(); if (e.target.value) document.execCommand('fontSize', false, e.target.value); e.target.value = ''; });
+  $('#mail-colour').addEventListener('input', e => { ed.focus(); document.execCommand('foreColor', false, e.target.value); });
+  $('#mailform').addEventListener('submit', async e => {
+    e.preventDefault();
+    const err = $('#form-err'), btn = e.submitter || $('#mailform button[type=submit]');
+    const toV = $('#mail-to').value.trim(), subj = $('#mail-subject').value.trim(), text = ed.innerText.trim();
+    err.hidden = true;
+    if (!toV) { err.textContent = 'Add who it’s to.'; err.hidden = false; return; }
+    if (!subj) { err.textContent = 'Add a subject.'; err.hidden = false; return; }
+    if (!text && !ed.querySelector('img')) { err.textContent = 'Write a message before sending.'; err.hidden = false; return; }
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      await api('POST', '/api/admin/mail/send', {to: toV, subject: subj, text, html: ed.innerHTML, inReplyTo: composeCtx.inReplyTo, references: composeCtx.references});
+      closeModal(); toast('Email sent');
+      if (composeCtx.onSent) await composeCtx.onSent();
+      if (mailState.folder === 'sent') loadMail(true);
+    } catch (x) { btn.disabled = false; btn.textContent = 'Send'; err.textContent = x.message; err.hidden = false; }
+  });
+  ed.focus();
+}
+// A small link box inside the compose window (the viewer blocks browser pop-up prompts).
+function openLinkPrompt() {
+  const sel = window.getSelection(), range = sel.getRangeAt(0).cloneRange();
+  const tb = $('#sheet .toolbar');
+  const box = document.createElement('div');
+  box.className = 'row'; box.style.cssText = 'gap:6px;margin-top:6px';
+  box.innerHTML = '<input id="mail-link" placeholder="https://…" style="flex:1;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)"><button type="button" class="btn sm primary" id="mail-link-ok">Add link</button><button type="button" class="btn sm" id="mail-link-cancel">Cancel</button>';
+  tb.after(box); $('#mail-link').focus();
+  const done = () => box.remove();
+  $('#mail-link-cancel').onclick = done;
+  $('#mail-link-ok').onclick = () => {
+    let url = $('#mail-link').value.trim();
+    if (url && !/^(https?:|mailto:)/i.test(url)) url = 'https://' + url;
+    if (url) { const ed = $('#mail-editor'); ed.focus(); const s2 = window.getSelection(); s2.removeAllRanges(); s2.addRange(range); document.execCommand('createLink', false, url); }
+    done();
+  };
 }
 
 /* ---------- accounts ---------- */
@@ -1232,7 +1311,7 @@ const ACT = {
   'mail-refresh': () => loadMail(),
   'mail-open': d => mailOpen(d.uid),
   'mail-new': () => mailCompose(),
-  'mail-reply': () => { const m = openMail; if (!m) return; const quoted = (m.text || '').split('\n').map(l => '> ' + l).join('\n'); mailCompose({to: m.replyTo || m.fromAddress, subject: /^re:/i.test(m.subject) ? m.subject : 'Re: ' + m.subject, text: `\n\nOn ${new Date(m.date).toLocaleString('en-GB')}, ${m.from} wrote:\n${quoted}`, inReplyTo: m.messageId, references: [...(m.references || []), m.messageId].filter(Boolean)}); },
+  'mail-reply': () => { const m = openMail; if (!m) return; const original = m.html || textToHtml(m.text || ''); mailCompose({to: m.replyTo || m.fromAddress, subject: /^re:/i.test(m.subject) ? m.subject : 'Re: ' + m.subject, html: `<p><br></p><p><br></p><p style="color:#666">On ${esc(new Date(m.date).toLocaleString('en-GB'))}, ${esc(m.from)} wrote:</p><blockquote style="margin:0 0 0 6px;border-left:3px solid #ccc;padding-left:10px;color:#444">${original}</blockquote>`, inReplyTo: m.messageId, references: [...(m.references || []), m.messageId].filter(Boolean)}); },
   'out-send': async d => { const o = S.outbox.find(x => x.id === d.id); if (!o) return; try { await api('POST', '/api/admin/mail/send', {to: o.to, subject: o.subject, text: o.body}); await ACT['out-sent'](d); toast(`Sent to ${o.name}`); } catch (e) { toast(e.message); } },
   'email-invite': () => { const i = lastInvite; if (!i) return; mailCompose({to: i.to, subject: `Your ${prop().name} tenant account`, text: i.message.replace('\\n', '\n')}); },
   tier: d => { priceTier = d.t; tierChosen = true; try { localStorage.setItem('oldmill.priceTier', priceTier); } catch (e) {} render(); },

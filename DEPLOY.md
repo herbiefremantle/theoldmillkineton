@@ -134,3 +134,11 @@ Open http://localhost:3000. Without a `DATABASE_URL` it saves to `website/data/d
 3. Waitlist alerts get a **Send email** button, invitations get **Email it to them**, and you're emailed whenever someone sends a request.
 
 For a provider other than IONOS, also set `MAIL_IMAP_HOST` and `MAIL_SMTP_HOST`.
+
+### If sending email doesn't work
+Railway's Hobby plan blocks the usual way of sending email (SMTP), so reading works but sending times out. Send through Resend instead:
+1. Sign up at resend.com, add the domain `theoldmillkineton.co.uk`, and add the DNS records it shows in IONOS. Then click Verify.
+2. Create an API key in Resend (sending access).
+3. In Railway → Variables, add `RESEND_API_KEY` with that key.
+
+Emails still come from your address, replies arrive in IONOS, and a copy is filed in Sent.

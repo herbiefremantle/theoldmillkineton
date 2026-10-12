@@ -304,16 +304,18 @@ function routes() {
   const mailLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many emails sent in the last hour. Try again later.' } });
   const notSetUp = res => res.status(503).json({ error: 'Email isn’t connected yet. Add MAIL_USER and MAIL_PASSWORD in Railway → Variables.' });
   // Turn mail errors into something the landlord can act on, with the technical reason in brackets.
+  const req_isSend = e => /smtp|ECONNECTION|greeting|CONN/i.test(`${e.code} ${e.command || ''} ${e.message}`);
   const mailError = (res, e) => {
     const why = [e.responseText, e.response, e.code, e.message].filter(Boolean).join(' / ').slice(0, 200);
     console.warn('Mail error:', why);
     let msg;
     if (e.authenticationFailed || e.code === 'EAUTH' || /auth|login|credential|password/i.test(why)) msg = `The mailbox refused to sign in. Check MAIL_USER is ${mail.address()} and MAIL_PASSWORD is the password you set in IONOS (no spaces before or after it).`;
-    else if (/ETIMEDOUT|ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|timeout|ESOCKET/i.test(why)) msg = 'Couldn’t connect to the mail server. If this keeps happening, the hosting may be blocking the connection.';
+    else if (e.code === 'ERESEND') msg = 'Resend didn’t accept the email. Check RESEND_API_KEY in Railway and that the domain is verified in Resend.';
+    else if (/ETIMEDOUT|ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|timeout|ESOCKET|ECONNECTION/i.test(why)) msg = req_isSend(e) ? 'Couldn’t connect to the outgoing mail server. Railway’s Hobby plan blocks sending email this way, so connect Resend (see the Email tab) to send.' : 'Couldn’t connect to the mail server. Try again in a moment.';
     else msg = 'The mailbox returned an error.';
     res.status(502).json({ error: `${msg} (${why})` });
   };
-  admin.get('/mail/status', (req, res) => res.json({ enabled: mail.enabled(), address: mail.enabled() ? mail.address() : null }));
+  admin.get('/mail/status', (req, res) => res.json({ enabled: mail.enabled(), address: mail.enabled() ? mail.address() : null, sendVia: process.env.RESEND_API_KEY ? 'resend' : 'smtp' }));
   admin.get('/mail/:folder', wrap(async (req, res) => {
     if (!mail.enabled()) return notSetUp(res);
     const folder = req.params.folder === 'sent' ? 'sent' : 'inbox';
@@ -328,6 +330,22 @@ function routes() {
       m ? res.json(m) : res.status(404).json({ error: 'That message has gone. It may have been moved or deleted.' });
     } catch (e) { mailError(res, e); }
   }));
+  // Attachments: pictures and PDFs open in the browser to preview; anything else downloads.
+  admin.get('/mail/:folder/:uid/attachment/:index', wrap(async (req, res) => {
+    if (!mail.enabled()) return notSetUp(res);
+    const uid = Number(req.params.uid), index = Number(req.params.index);
+    if (!Number.isInteger(uid) || uid < 1 || !Number.isInteger(index) || index < 0) return res.status(400).json({ error: 'That attachment can’t be opened.' });
+    try {
+      const a = await mail.getAttachment(req.params.folder === 'sent' ? 'sent' : 'inbox', uid, index);
+      if (!a) return res.status(404).json({ error: 'That attachment has gone.' });
+      const name = a.filename.replace(/[^\w.\- ()]+/g, '_').slice(0, 150) || 'attachment';
+      const inline = a.previewable && req.query.download !== '1';
+      res.setHeader('Content-Type', inline ? a.contentType : 'application/octet-stream');
+      res.setHeader('Content-Disposition', `${inline ? 'inline' : 'attachment'}; filename="${name}"; filename*=UTF-8''${encodeURIComponent(a.filename)}`);
+      res.setHeader('Cache-Control', 'private, no-store');
+      res.send(a.content);
+    } catch (e) { mailError(res, e); }
+  }));
   admin.post('/mail/send', mailLimiter, wrap(async (req, res) => {
     if (!mail.enabled()) return notSetUp(res);
     const b = req.body || {};
@@ -335,10 +353,11 @@ function routes() {
     if (!to.length || to.length > 20 || !to.every(x => EMAIL.test(x))) return res.status(400).json({ error: 'Check the “To” address. Separate several with commas.' });
     const subject = clean(b.subject, 300), text = typeof b.text === 'string' ? b.text.slice(0, 50000) : '';
     if (!subject) return res.status(400).json({ error: 'Add a subject.' });
-    if (!text.trim()) return res.status(400).json({ error: 'Write a message before sending.' });
+    const html = typeof b.html === 'string' ? b.html.slice(0, 300000) : '';
+    if (!text.trim() && !html.replace(/<[^>]*>|&nbsp;/g, '').trim()) return res.status(400).json({ error: 'Write a message before sending.' });
     const inReplyTo = clean(b.inReplyTo, 500) || undefined;
     const references = Array.isArray(b.references) ? b.references.map(x => clean(x, 500)).filter(Boolean).slice(0, 20) : undefined;
-    try { await mail.sendMail({ to, subject, text, inReplyTo, references }); res.json({ ok: true }); } catch (e) { mailError(res, e); }
+    try { await mail.sendMail({ to, subject, text, html: html || undefined, inReplyTo, references }); res.json({ ok: true }); } catch (e) { mailError(res, e); }
   }));
 
   api.use('/admin', admin);
