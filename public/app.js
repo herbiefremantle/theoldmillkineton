@@ -390,7 +390,7 @@ function viewSite() {
       <button class="btn gold" data-act="enquire">Request a space</button>
     </div>
   </section>
-  <footer class="foot wrap">${esc(P.name)}${P.address ? ' · ' + esc(P.address) : ''} · <button type="button" class="linkish" data-view="tenant">Tenant sign in</button> · <button type="button" class="linkish" data-view="landlord">Landlord sign in</button></footer>`;
+  <footer class="foot wrap">${esc(P.name)}${P.address ? ' · ' + esc(P.address) : ''} · <button type="button" class="linkish" data-view="tenant">Tenant sign in</button> · <button type="button" class="linkish" data-view="landlord">Landlord sign in</button>${isInstalled() ? '' : ' · <button type="button" class="linkish" data-act="get-app">Get the app</button>'}</footer>`;
 }
 function interestOptions() {
   return [['any', 'Any space'], ['unit1', 'Any Unit 1 workspace (all inclusive)'], ['large', 'Any of Units 2–7'], ...units().map(u => [u.id, `${u.name} · ${STATUS[u.status]}`])];
@@ -442,7 +442,7 @@ function viewTenant() {
           <select id="pick-tenant" data-act="pick-tenant" style="padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--raise)">${T.map(x => `<option value="${esc(x.id)}"${x.id === t.id ? ' selected' : ''}>${esc(x.business || x.name)} (${esc(unitById(x.unitId)?.code || '?')})</option>`).join('')}</select></label>
       </div>
     </div>` : ''}
-    <div class="dash-head"><div><p class="eyebrow">${esc(prop().name)} · Tenant portal</p><h1 class="h2" style="font-size:48px">Hello, ${esc(t.name.split(' ')[0])}</h1><p class="muted">${esc(t.business)}${exampleChip(t)}</p></div>${mode === 'tenant' ? '<div class="row"><button class="btn" data-act="password">Change password</button><button class="btn" data-act="logout">Sign out</button></div>' : ''}</div>
+    <div class="dash-head"><div><p class="eyebrow">${esc(prop().name)} · Tenant portal</p><h1 class="h2" style="font-size:48px">Hello, ${esc(t.name.split(' ')[0])}</h1><p class="muted">${esc(t.business)}${exampleChip(t)}</p></div>${mode === 'tenant' ? `<div class="row">${isInstalled() ? '' : '<button class="btn primary" data-act="get-app">Get the app</button>'}<button class="btn" data-act="password">Change password</button><button class="btn" data-act="logout">Sign out</button></div>` : ''}</div>
     <div class="grid2">
       <section class="panel"><h3>Your space</h3>
         <div class="list num">
@@ -497,7 +497,7 @@ function viewLandlord() {
   const body = {overview: lOverview, spaces: lSpaces, enquiries: lEnquiries, tenants: lTenants, messages: lMessages, invoices: lInvoices, settings: lSettings, notify: lNotify}[ltab]();
   return `<div class="dash wrap">
     <div class="dash-head"><div><p class="eyebrow">Landlord</p><h1 class="h2" style="font-size:48px">${esc(prop().name)}</h1></div>
-      <div class="row"><button class="btn" data-act="msg-new">Message tenants</button><button class="btn primary" data-act="inv-new">New invoice</button><button class="btn ghost" data-act="password">Change password</button><button class="btn ghost" data-act="logout">Sign out</button></div></div>
+      <div class="row"><button class="btn" data-act="msg-new">Message tenants</button><button class="btn primary" data-act="inv-new">New invoice</button>${isInstalled() ? '' : '<button class="btn ghost" data-act="get-app">Get the app</button>'}<button class="btn ghost" data-act="password">Change password</button><button class="btn ghost" data-act="logout">Sign out</button></div></div>
     <div class="tabs" role="tablist">${tab('overview', 'Overview')}${tab('spaces', 'Spaces')}${tab('enquiries', 'Enquiries', newEnq)}${tab('tenants', 'Tenants')}${tab('invoices', 'Invoices')}${tab('messages', 'Messages')}${tab('notify', 'Waitlist alerts', pend)}${tab('settings', 'Wi-Fi & details')}</div>
     ${body}
   </div>`;
@@ -1013,3 +1013,25 @@ document.addEventListener('keydown', e => {
   render();
   loadAll();
 })();
+
+// Lets phones and computers install the site as an app (the worker itself caches nothing).
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; });
+function isInstalled() { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+function installSheet() {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const android = /Android/.test(navigator.userAgent);
+  const steps = ios
+    ? '<ol><li>Open this page in <b>Safari</b>.</li><li>Tap the <b>Share</b> button (the square with an arrow pointing up).</li><li>Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.</li></ol>'
+    : android
+      ? '<ol><li>Open this page in <b>Chrome</b>.</li><li>Tap the <b>⋮</b> menu at the top right.</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li></ol>'
+      : '<ol><li>In <b>Chrome</b> or <b>Edge</b>: click the install icon at the right of the address bar, or open the <b>⋮</b> menu and choose <b>Install The Old Mill</b>.</li><li>In <b>Safari</b> on a Mac: choose <b>File → Add to Dock</b>.</li></ol>';
+  openSheet(`<header><h2>Get the app</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header>
+    <p>Add The Old Mill to your home screen or desktop. It opens in its own window, like an app, and you stay signed in.</p>
+    ${installPrompt ? '<footer style="justify-content:flex-start"><button class="btn primary" data-act="install-now">Install now</button></footer><p class="muted">Or do it yourself:</p>' : ''}
+    ${steps}
+    <footer><button class="btn" data-act="close">Close</button></footer>`);
+}
+ACT['get-app'] = () => installSheet();
+ACT['install-now'] = async () => { if (!installPrompt) return; installPrompt.prompt(); const r = await installPrompt.userChoice; installPrompt = null; closeModal(); if (r.outcome === 'accepted') toast('Installed. Find The Old Mill on your home screen or desktop.'); };
