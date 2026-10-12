@@ -140,7 +140,7 @@ function fieldHTML(f) {
   let ctl;
   if (f.type === 'textarea') ctl = `<textarea id="${id}" rows="${f.rows || 4}"${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''}>${esc(v)}</textarea>`;
   else if (f.type === 'select') ctl = `<select id="${id}">${f.options.map(o => `<option value="${esc(o[0])}"${String(o[0]) === String(v) ? ' selected' : ''}>${esc(o[1])}</option>`).join('')}</select>`;
-  else ctl = `<input id="${id}" type="${f.type || 'text'}" value="${esc(v)}"${f.step ? ` step="${f.step}"` : ''}${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''}>`;
+  else ctl = `<input id="${id}" type="${f.type || 'text'}" value="${esc(v)}"${f.min ? ` min="${esc(f.min)}"` : ''}${f.step ? ` step="${f.step}"` : ''}${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''}>`;
   return `<label class="field ${f.full ? 'full' : ''}"><span>${esc(f.label)}${f.required ? ' *' : ''}</span>${ctl}${f.hint ? `<small>${esc(f.hint)}</small>` : ''}</label>`;
 }
 function openForm({title, intro, fields, submit, onSubmit}) {
@@ -157,7 +157,9 @@ function openForm({title, intro, fields, submit, onSubmit}) {
     for (const f of fields) {
       const el = document.getElementById('f-' + f.id);
       v[f.id] = f.type === 'checkbox' ? el.checked : f.type === 'number' ? (el.value === '' ? null : Number(el.value)) : f.type === 'password' ? el.value : el.value.trim();
-      if (f.required && (v[f.id] === '' || v[f.id] === null)) { err.textContent = `Add ${f.label.toLowerCase()} to continue.`; err.hidden = false; el.focus(); return; }
+      if (f.required && (v[f.id] === '' || v[f.id] === null)) { err.textContent = f.missing || `Please fill in “${f.label}”.`; err.hidden = false; el.focus(); return; }
+      if (f.id === 'phone' && f.required && (v[f.id].match(/\d/g) || []).length < 10) { err.textContent = 'Enter a full phone number, including the area code.'; err.hidden = false; el.focus(); return; }
+      if (f.id === 'postcode' && f.required && !/^[A-Za-z]{1,2}\d[A-Za-z\d]? ?\d[A-Za-z]{2}$/.test(v[f.id])) { err.textContent = 'Enter a full UK postcode, like CV35 0XX.'; err.hidden = false; el.focus(); return; }
       if (f.type === 'email' && v[f.id] && !/^\S+@\S+\.\S+$/.test(v[f.id])) { err.textContent = 'Enter a full email address, like name@business.co.uk.'; err.hidden = false; el.focus(); return; }
     }
     const btn = e.submitter || $('#mform button[type=submit]'); btn.disabled = true;
@@ -532,14 +534,14 @@ function enquireForm(unitId, wait) {
     title: wait ? 'Join the waitlist' : 'Request a space',
     intro: u ? (u.status === 'available' ? `${esc(u.name)} is available now. Send a request and we'll be in touch to arrange a viewing.` : `${esc(u.name)} is ${u.status === 'soon' ? 'coming soon' : 'let at the moment'}. We'll message you as soon as it's available.`) : 'Tell us what you need. If nothing suits right now we will add you to the waitlist and message you when a space comes up.',
     fields: [
-      {id:'name', label:'Your name', required:true}, {id:'business', label:'Business name'},
-      {id:'email', label:'Email', type:'email', required:true}, {id:'phone', label:'Phone', type:'tel'},
+      {id:'name', label:'Your name', required:true}, {id:'business', label:'Business name', required:true},
+      {id:'email', label:'Email', type:'email', required:true}, {id:'phone', label:'Phone', type:'tel', required:true},
       {id:'interest', label:'Space', type:'select', options: interestOptions(), value: unitId || 'any'},
       ...(localPricing().enabled ? [
         {id:'based', label:'Where is your business based?', type:'select', options: [['kineton', 'Kineton'], ['nearby', `Within ${localPricing().nearbyMiles} miles (e.g. Tysoe, Wellesbourne)`], ['further', 'Further afield (e.g. Leamington, Stratford)']], value: priceTier},
-        {id:'postcode', label:'Business postcode', placeholder:'e.g. CV35 0XX'}] : []),
-      {id:'start', label:'Ideal start date', type:'date'},
-      {id:'message', label:'Please tell us about your business and how you plan to use the space', type:'textarea', full:true, rows:4, placeholder:'e.g. what your business does, what you would use the space for, how many people, opening hours, any access or storage needs'},
+        {id:'postcode', label:'Business postcode', placeholder:'e.g. CV35 0XX', required:true}] : []),
+      {id:'start', label:'Ideal start date', type:'date', required:true, min: today(), missing: 'Choose your ideal start date.'},
+      {id:'message', label:'Please tell us about your business and how you plan to use the space', type:'textarea', full:true, rows:4, required:true, missing: 'Tell us about your business and how you plan to use the space.', placeholder:'e.g. what your business does, what you would use the space for, how many people, opening hours, any access or storage needs'},
       {id:'notify', label:'Message me when a matching space becomes available', type:'checkbox', value:true, full:true}
     ],
     submit: wait ? 'Join waitlist' : 'Send request',
@@ -1184,6 +1186,11 @@ document.addEventListener('change', e => {
   if (el.dataset.act === 'pick-tenant') { curTenant = el.value; render(); }
   if (el.dataset.act === 'unit-status') setUnitStatus(el.dataset.id, el.value).catch(() => {});
   if (el.dataset.act === 'enq-status') { const x = S.enquiries.find(q => q.id === el.dataset.id); if (x) put('enquiries', {...x, status: el.value}).catch(() => {}); }
+});
+// Tapping anywhere on a date box opens the calendar, not just the small icon.
+document.addEventListener('click', e => {
+  const el = e.target;
+  if (el && el.tagName === 'INPUT' && el.type === 'date' && typeof el.showPicker === 'function') { try { el.showPicker(); } catch (x) {} }
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !$('#modal').hidden) closeModal();

@@ -195,6 +195,11 @@ function routes() {
       }
     }
     if (!enq.name) return res.status(400).json({ error: 'Add your name to continue.' });
+    if (!enq.business) return res.status(400).json({ error: 'Add your business name to continue.' });
+    if ((enq.phone.match(/\d/g) || []).length < 10) return res.status(400).json({ error: 'Enter a full phone number, including the area code.' });
+    if (!enq.start) return res.status(400).json({ error: 'Choose your ideal start date.' });
+    if (!enq.message) return res.status(400).json({ error: 'Tell us about your business and how you plan to use the space.' });
+    if (!/^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/.test(clean(b.postcode, 10).toUpperCase().replace(/\s+/g, ' '))) return res.status(400).json({ error: 'Enter a full UK postcode, like CV35 0XX.' });
     if (!EMAIL.test(enq.email)) return res.status(400).json({ error: 'Enter a full email address, like name@business.co.uk.' });
     const free = units.some(u => u.status === 'available' && matchesInterest(enq.interest, u));
     enq.status = free ? 'new' : 'waitlist';
