@@ -435,7 +435,7 @@
   {
    "id": "7",
    "code": "7",
-   "name": "Unit 7",
+   "name": "The Stable Block",
    "group": "main",
    "type": "Commercial unit",
    "size": null,
@@ -461,7 +461,8 @@
     "Exterior",
     "Interior"
    ],
-   "access": "Through the metal gates from Mill Lane into the yard"
+   "access": "Through the metal gates from Mill Lane into the yard",
+   "shortName": "Stable Block"
   },
   {
    "id": "5a",

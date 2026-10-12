@@ -389,6 +389,13 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: Unit 2 business rates, shorter Mill Rooms wording.');
   }
+  if (!done['2026-10-stable-block']) {
+    const u = await store.get('units', '7');
+    if (u && u.name === 'Unit 7') await store.put('units', '7', { ...strip(u), name: 'The Stable Block', shortName: 'Stable Block' });
+    done['2026-10-stable-block'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: Unit 7 renamed The Stable Block.');
+  }
 }
 
 async function ensureLandlord() {
