@@ -409,6 +409,23 @@ function viewSite() {
     <figure class="hero-photo"><img src="img/the-old-mill.jpg" alt="The Old Mill, a three-storey red-brick mill building with green window frames"><figcaption>The mill building${P.address ? ', ' + esc(P.address) : ''}</figcaption></figure>
   </section>
 
+  <section class="section wrap" id="about">
+    <div class="two">
+      <div class="prose">
+        <p class="eyebrow">Welcome</p>
+        <h2 class="h2">Welcome to ${esc(P.name)}</h2>
+        ${P.description.split(/\n\s*\n/).filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('')}
+        <div class="filters" style="margin-top:6px"><span class="muted" style="font-size:13.5px;align-self:center">Jump to</span>
+          <button type="button" data-act="scroll" data-target="spaces">The spaces</button>
+          <button type="button" data-act="scroll" data-target="siteplan">Site plan</button>
+          <button type="button" data-act="scroll" data-target="included">Prices &amp; what's included</button>
+          <button type="button" data-act="scroll" data-target="how-renting-works">How renting works</button>
+        </div>
+      </div>
+      ${P.features.length ? `<section class="panel" style="align-self:start"><h3>At a glance</h3><ul class="ticks">${P.features.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>` : ''}
+    </div>
+  </section>
+
   <section class="section wrap" id="siteplan">
     <div class="two" style="align-items:center">
       <div class="prose"><p class="eyebrow">Site plan</p><h2 class="h2">Find your space</h2>
@@ -437,20 +454,21 @@ function viewSite() {
     ${shown.length ? `<div class="cards">${shown.map(unitCard).join('')}</div>` : '<div class="empty">Nothing matches that filter right now. Join the waitlist and we will tell you when something frees up.</div>'}
   </section>
 
-  <section class="section wrap">
-    <div class="two">
-      <div class="prose">
+  <section class="section wrap" id="included">
+    <div class="section-head"><h2 class="h2">What's included</h2></div>
+    <div class="grid2">
+      <section class="panel">
         <p class="eyebrow">Units 1, 2, 5A and 5B</p>
-        <h2 class="h2">One price, everything on</h2>
-        <p><b>Everything included in Unit 1, Unit 2 and Rooms 5A and 5B.</b> The four rooms in the mill building (Unit 1), Unit 2 and the two small rooms 5A and 5B are let on one monthly price covering internet, electricity, water and the service charge, with no business rates to register for. Use them for whatever your business needs, from treatment rooms and therapies to crafts, studios or desk work.</p>
-        <div class="incl">${INCLUDES.map(i => `<div><b>${esc(i)}</b><span class="muted">Included</span></div>`).join('')}</div>
-        <p><b>Units 3 to 7 are priced separately.</b> Each has its rent and monthly service charge shown, with electricity on your own account. You register for business rates with the local council, and small businesses can get up to 100% off through <a href="https://www.gov.uk/apply-for-business-rate-relief/small-business-rate-relief" target="_blank" rel="noopener">Small Business Rate Relief</a> if they meet the requirements.</p>
-      </div>
-      <div class="prose">
-        <p class="eyebrow">About the property</p>
-        ${P.description.split(/\n\s*\n/).filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('')}
-        ${P.features.length ? `<ul class="ticks">${P.features.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-      </div>
+        <h3>One price, everything on</h3>
+        <p>The four rooms in the mill building (Unit 1), Unit 2 and the two small rooms 5A and 5B are let on one monthly price covering internet, electricity, water and the service charge, with no business rates to register for. Use them for whatever your business needs, from treatment rooms and therapies to crafts, studios or desk work.</p>
+        <div class="incl">${INCLUDES.map(i => `<div style="background:var(--raise)"><b>${esc(i)}</b><span class="muted">Included</span></div>`).join('')}</div>
+      </section>
+      <section class="panel">
+        <p class="eyebrow">Units 3 to 7</p>
+        <h3>Priced separately</h3>
+        <p>Each unit shows its rent and monthly service charge. Electricity is on your own account.</p>
+        <p>You register for business rates with the local council. Small businesses can get up to 100% off through <a href="https://www.gov.uk/apply-for-business-rate-relief/small-business-rate-relief" target="_blank" rel="noopener">Small Business Rate Relief</a> if they meet the requirements.</p>
+      </section>
     </div>
   </section>
 
