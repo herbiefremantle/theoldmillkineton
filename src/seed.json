@@ -489,9 +489,7 @@
    "ceilingM": null,
    "doorWidthM": null,
    "doorHeightM": null,
-   "availableFrom": "",
-   "nearbyExtra": 25,
-   "furtherExtra": 50
+   "availableFrom": ""
   },
   {
    "id": "5b",
@@ -521,9 +519,7 @@
    "ceilingM": null,
    "doorWidthM": null,
    "doorHeightM": null,
-   "availableFrom": "",
-   "nearbyExtra": 25,
-   "furtherExtra": 50
+   "availableFrom": ""
   },
   {
    "id": "g1",

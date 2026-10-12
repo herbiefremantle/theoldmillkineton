@@ -34,13 +34,20 @@ const sizeText = u => u.size ? `${Number(u.size).toLocaleString('en-GB')} sq ft 
 const scText = (u, pub) => u.serviceCharge === 'included' ? 'Included in rent' : u.serviceCharge === 'extra' ? (u.serviceChargeAmount && !(pub && u.status === 'let') ? `${gbp(u.serviceChargeAmount)} / month on top of rent (Total ${gbp(totalRent(u))})` : (pub && u.status === 'let') ? 'Payable on top of rent' : 'Payable on top of rent, amount to be confirmed') : 'None';
 const billsText = u => u.inclusive ? 'Internet, electricity & water included' : 'Electricity paid by tenant';
 // Local business rates: the listed rent is the Kineton rate; businesses further away pay a set amount more.
-const LP_DEFAULT = {enabled: true, nearbyExtra: 50, furtherExtra: 100, nearbyMiles: 6, nearbyPlaces: 'Tysoe, Wellesbourne and other villages within 6 miles', furtherPlaces: 'Leamington, Stratford, Coventry and beyond'};
+const LP_DEFAULT = {enabled: true, mode: 'percent', nearbyPct: 10, furtherPct: 20, roundTo: 5, nearbyExtra: 50, furtherExtra: 100, nearbyMiles: 6, nearbyPlaces: 'Tysoe, Wellesbourne and other villages within 6 miles', furtherPlaces: 'Leamington, Stratford, Coventry and beyond'};
 const localPricing = () => Object.assign({}, LP_DEFAULT, prop().localPricing || {});
 const TIERS = {kineton: 'Kineton businesses', nearby: 'Within 6 miles', further: 'Further afield'};
 const usesLocal = u => localPricing().enabled && u.localPricing !== false && u.rent;
 // A space can set its own step-ups (e.g. the small rooms); otherwise the site-wide amounts apply.
-const tierExtra = (tier, u) => { const L = localPricing(); const pick = (own, all) => Number(own ?? all) || 0; return tier === 'nearby' ? pick(u && u.nearbyExtra, L.nearbyExtra) : tier === 'further' ? pick(u && u.furtherExtra, L.furtherExtra) : 0; };
-const priceFor = (u, tier) => u && u.rent ? Number(u.rent) + (usesLocal(u) ? tierExtra(tier, u) : 0) : null;
+const tierExtra = (tier, u) => {
+  if (tier !== 'nearby' && tier !== 'further') return 0;
+  const L = localPricing(), own = u && (tier === 'nearby' ? u.nearbyExtra : u.furtherExtra);
+  if (own != null && own !== '') return Number(own) || 0;
+  if (L.mode === 'percent') return Number(u && u.rent || 0) * (Number(tier === 'nearby' ? L.nearbyPct : L.furtherPct) || 0) / 100;
+  return Number(tier === 'nearby' ? L.nearbyExtra : L.furtherExtra) || 0;
+};
+const roundPrice = n => { const r = Number(localPricing().roundTo) || 0; return r > 0 ? Math.round(n / r) * r : Math.round(n * 100) / 100; };
+const priceFor = (u, tier) => !u || !u.rent ? null : !usesLocal(u) || tier === 'kineton' || !tier ? Number(u.rent) : roundPrice(Number(u.rent) + tierExtra(tier, u));
 const reduced = u => u.status !== 'let' && u.wasRent && u.rent && Number(u.wasRent) > Number(u.rent);
 const scLine = u => u.serviceCharge === 'included' ? 'Service charge included'
   : u.serviceCharge === 'extra' ? (u.serviceChargeAmount ? `+ ${gbp(u.serviceChargeAmount)} service charge (Total ${gbp(totalRent(u))})` : '+ service charge (to be confirmed)')
@@ -354,7 +361,7 @@ function viewUnit() {
       <aside class="panel aside">
         <span class="eyebrow">${let_ ? 'Availability' : 'Rent'}</span>
         ${let_ ? `<div class="price">Let</div><p class="muted">This space is let at the moment. Join the waitlist and we'll message you when it becomes available.</p>`
-          : `${reduced(u) ? `<div class="row" style="gap:8px"><span class="pill s-soon">Reduced</span><span class="muted">Rent was <s>${gbp(u.wasRent)}</s></span></div>` : ''}<div><span class="price">${u.rent ? gbp(u.rent) : 'On request'}</span>${u.rent ? '<span class="muted"> / month rent</span>' : ''}</div>${usesLocal(u) ? `<div class="list num" style="font-size:14px">${Object.keys(TIERS).map(k => `<div${k === 'kineton' ? ' style="font-weight:700"' : ''}><span>${TIERS[k]}${k === 'kineton' ? ' <span class="pill s-paid">Best price</span>' : ''}</span><b>${gbp(priceFor(u, k))}</b></div>`).join('')}</div><p class="muted" style="font-size:12.5px">Prices are per month and depend on where your business is based. <button type="button" class="linkish" data-act="scroll-local">How local rates work</button></p>` : ''}<p class="muted num" style="font-size:13.5px">${u.inclusive ? 'Everything included: rent, service charge and bills' : esc(scLine(u))}</p>`}
+          : `${reduced(u) ? `<div class="row" style="gap:8px"><span class="pill s-soon">Reduced</span><span class="muted">Rent was <s>${gbp(u.wasRent)}</s></span></div>` : ''}<div><span class="price">${u.rent ? gbp(u.rent) : 'On request'}</span>${u.rent ? '<span class="muted"> / month rent</span>' : ''}</div>${usesLocal(u) ? `<div class="list num" style="font-size:14px">${Object.keys(TIERS).map(k => `<div><span>${TIERS[k]}</span><b>${gbp(priceFor(u, k))}</b></div>`).join('')}</div><p class="muted" style="font-size:12.5px">Prices are per month and depend on where your business is based. <button type="button" class="linkish" data-act="scroll-local">How local rates work</button></p>` : ''}<p class="muted num" style="font-size:13.5px">${u.inclusive ? 'Everything included: rent, service charge and bills' : esc(scLine(u))}</p>`}
         <div class="list" style="font-size:14px">
           <div><span class="muted">Size</span><b>${u.size ? Number(u.size).toLocaleString('en-GB') + ' sq ft' : '—'}</b></div>
           <div><span class="muted">Service charge</span><b>${u.serviceCharge === 'included' ? 'Included' : u.serviceCharge === 'extra' ? (u.serviceChargeAmount && !let_ ? gbp(u.serviceChargeAmount) + ' (Total ' + gbp(totalRent(u)) + ')' : let_ ? 'Extra' : 'To be confirmed') : 'None'}</b></div>
@@ -666,8 +673,9 @@ function lSettings() {
       ${(() => { const L = localPricing(); return `<div class="list num">
         <div><span class="muted">Status</span><b>${L.enabled ? 'On' : 'Off'}</b></div>
         <div><span class="muted">Kineton businesses</span><b>Listed rent</b></div>
-        <div><span class="muted">Within ${esc(L.nearbyMiles)} miles</span><b>+${gbp(L.nearbyExtra)}</b></div>
-        <div><span class="muted">Further afield</span><b>+${gbp(L.furtherExtra)}</b></div>
+        <div><span class="muted">Within ${esc(L.nearbyMiles)} miles</span><b>${L.mode === 'percent' ? '+' + esc(L.nearbyPct) + '%' : '+' + gbp(L.nearbyExtra)}</b></div>
+        <div><span class="muted">Further afield</span><b>${L.mode === 'percent' ? '+' + esc(L.furtherPct) + '%' : '+' + gbp(L.furtherExtra)}</b></div>
+        ${L.mode === 'percent' && Number(L.roundTo) ? `<div><span class="muted">Prices rounded to</span><b>nearest ${gbp(L.roundTo)}</b></div>` : ''}
       </div><p class="muted" style="font-size:13.5px">Each space's listed rent is its Kineton rate. Switch it off for a single space in Spaces → Edit.</p>`; })()}
     </section>
     <section class="panel"><div class="row" style="justify-content:space-between"><h3>Payment options</h3><button class="btn sm" data-act="prop-edit">Edit</button></div>
@@ -697,7 +705,7 @@ function unitForm(u) {
       {id:'availableFrom', label:'Available from (if coming soon)', type:'date', value:u.availableFrom},
       {id:'inclusive', label:'Rent includes internet, electricity and water', type:'checkbox', value:u.inclusive},
       {id:'localPricing', label:'Use local business rates (the rent above is the Kineton rate)', type:'checkbox', value:u.localPricing !== false},
-      {id:'nearbyExtra', label:'This space only: extra within 6 miles (£)', type:'number', step:'0.01', value:u.nearbyExtra, hint:'Blank uses the site-wide amount'},
+      {id:'nearbyExtra', label:'This space only: fixed extra within 6 miles (£)', type:'number', step:'0.01', value:u.nearbyExtra, hint:'Blank uses the site-wide amount'},
       {id:'furtherExtra', label:'This space only: extra further afield (£)', type:'number', step:'0.01', value:u.furtherExtra, hint:'Blank uses the site-wide amount'},
       {id:'serviceCharge', label:'Service charge', type:'select', options:[['included', 'Included in rent'], ['extra', 'Charged on top of rent'], ['none', 'No service charge']], value:u.serviceCharge || 'none'},
       {id:'serviceChargeAmount', label:'Service charge per month (£)', type:'number', step:'0.01', value:u.serviceChargeAmount, hint:'Only if charged on top'},
@@ -864,17 +872,21 @@ function lpForm() {
   const L = localPricing();
   openForm({
     title: 'Local business rates',
-    intro: 'The rent listed on each space is the Kineton rate. These amounts are added for businesses based further away.',
+    intro: 'The rent listed on each space is the Kineton price. Businesses based further away pay the percentage or amount set here on top.',
     fields: [
       {id:'enabled', label:'Use local business rates', type:'checkbox', value:L.enabled, full:true},
+      {id:'mode', label:'How prices go up', type:'select', options:[['percent', 'By percentage'], ['fixed', 'By a fixed £ amount']], value:L.mode},
       {id:'nearbyMiles', label:'Nearby radius (miles)', type:'number', value:L.nearbyMiles},
-      {id:'nearbyExtra', label:'Extra per month, nearby (£)', type:'number', step:'0.01', value:L.nearbyExtra},
+      {id:'nearbyPct', label:'Nearby (%)', type:'number', step:'0.1', value:L.nearbyPct},
+      {id:'furtherPct', label:'Further afield (%)', type:'number', step:'0.1', value:L.furtherPct},
+      {id:'nearbyExtra', label:'Nearby, fixed amount (£)', type:'number', step:'0.01', value:L.nearbyExtra},
+      {id:'furtherExtra', label:'Further afield, fixed amount (£)', type:'number', step:'0.01', value:L.furtherExtra},
+      {id:'roundTo', label:'Round percentage prices to the nearest (£)', type:'number', value:L.roundTo, hint:'e.g. 5 turns £286 into £285. 0 for exact prices'},
       {id:'nearbyPlaces', label:'Nearby examples', value:L.nearbyPlaces, full:true},
-      {id:'furtherExtra', label:'Extra per month, further afield (£)', type:'number', step:'0.01', value:L.furtherExtra},
       {id:'furtherPlaces', label:'Further afield examples', value:L.furtherPlaces, full:true}
     ],
     submit: 'Save',
-    onSubmit: async v => { await putDoc('property', {...prop(), localPricing: {...v, nearbyExtra: v.nearbyExtra ?? 0, furtherExtra: v.furtherExtra ?? 0, nearbyMiles: v.nearbyMiles ?? 6}}); toast('Local business rates saved'); }
+    onSubmit: async v => { await putDoc('property', {...prop(), localPricing: {...v, nearbyPct: v.nearbyPct ?? 0, furtherPct: v.furtherPct ?? 0, nearbyExtra: v.nearbyExtra ?? 0, furtherExtra: v.furtherExtra ?? 0, roundTo: v.roundTo ?? 0, nearbyMiles: v.nearbyMiles ?? 6}}); toast('Local business rates saved'); }
   });
 }
 function propForm() {

@@ -345,6 +345,17 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: 1D storage floor low ceiling note.');
   }
+  if (!done['2026-10-percent-rates']) {
+    for (const id of ['5a', '5b']) {
+      const u = await store.get('units', id);
+      if (u && Number(u.nearbyExtra) === 25 && Number(u.furtherExtra) === 50) { const { nearbyExtra, furtherExtra, ...rest } = strip(u); await store.put('units', id, rest); }
+    }
+    const p = await store.get('site', 'property');
+    if (p) { const d = strip(p); d.localPricing = { ...(d.localPricing || {}), mode: 'percent', nearbyPct: 10, furtherPct: 20, roundTo: 5 }; await store.put('site', 'property', d); }
+    done['2026-10-percent-rates'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: local rates by percentage (+10% / +20%).');
+  }
 }
 
 async function ensureLandlord() {
