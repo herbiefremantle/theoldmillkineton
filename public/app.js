@@ -44,10 +44,8 @@ const RATE_LABEL = {kineton: 'Kineton business rate', nearby: 'Within 6 miles ra
 function priceBar() {
   if (!localPricing().enabled) return '';
   const b = (k, l) => `<button type="button" data-act="tier" data-t="${k}" aria-pressed="${priceTier === k}">${l}</button>`;
-  return `<div class="pricebar wrap"><div class="row" style="gap:10px;justify-content:space-between">
-    <span style="font-size:14px"><b>Show prices for a business based in:</b> <span class="muted">Kineton businesses get our best rates</span></span>
-    <div class="filters" role="group" aria-label="Show prices for">${b('kineton', 'Kineton')}${b('nearby', `Within ${esc(localPricing().nearbyMiles)} miles`)}${b('further', 'Further afield')}</div>
-  </div></div>`;
+  return `<div class="wrap tierbar"><span class="tier-label"><b>Prices for a business based in:</b> <span class="muted">Kineton businesses get our best rates</span></span>
+    <div class="filters" role="group" aria-label="Show prices for a business based in">${b('kineton', 'Kineton')}${b('nearby', `Within ${esc(localPricing().nearbyMiles)} miles`)}${b('further', 'Further afield')}</div></div>`;
 }
 const usesLocal = u => localPricing().enabled && u.localPricing !== false && u.rent;
 // A space can set its own step-ups (e.g. the small rooms); otherwise the site-wide amounts apply.
@@ -357,7 +355,7 @@ function viewUnit() {
   const cta = let_ || u.status === 'soon'
     ? `<button class="btn primary" style="justify-content:center" data-act="enquire" data-unit="${esc(u.id)}" data-wait="1">Notify me when available</button>`
     : `<button class="btn primary" style="justify-content:center" data-act="enquire" data-unit="${esc(u.id)}">Request this space</button>`;
-  return `${priceBar()}<div class="upage wrap">
+  return `<div class="upage wrap">
     <button class="back" data-act="go-site">← All spaces</button>
     <div class="uhead"><div><p class="eyebrow">${esc(u.type)} · ${esc(P.name)}</p><h1 class="sign" style="font-size:clamp(48px,7vw,84px)">${esc(u.name)}</h1></div>
       <span class="pill s-${esc(u.status)}" style="font-size:14px">${STATUS[u.status]}${u.status === 'soon' && u.availableFrom ? ' · from ' + fmtDate(u.availableFrom) : ''}</span></div>
@@ -417,7 +415,6 @@ function viewSite() {
   const shown = U.filter(u => siteFilter === 'all' || (siteFilter === 'available' && u.status !== 'let') || (siteFilter === 'unit1' && u.group === 'unit1') || (siteFilter === 'main' && u.group !== 'unit1'));
   const f = (k, l) => `<button type="button" data-act="filter" data-f="${k}" aria-pressed="${siteFilter === k}">${l}</button>`;
   return `
-  ${priceBar()}
   <section class="hero wrap">
     <div class="hero-copy">
       <p class="eyebrow">Rooms, workshops &amp; storage to let${P.address ? ' · ' + esc(P.address) : ''}</p>
@@ -475,7 +472,6 @@ function viewSite() {
   <section class="section wrap" id="spaces">
     <div class="section-head"><h2 class="h2">The spaces</h2>
       <div class="filters">${f('all', 'All')}${f('available', 'Available or soon')}${f('unit1', 'Mill rooms')}${f('main', 'Units 2–6, Stable Block, rooms & garages')}</div></div>
-    ${localPricing().enabled ? `<div class="row" style="gap:10px;margin:-8px 0 16px"><span class="muted" style="font-size:13.5px">Prices for a business based in:</span><div class="filters" role="group" aria-label="Show prices for">${[['kineton', 'Kineton'], ['nearby', `Within ${esc(localPricing().nearbyMiles)} miles`], ['further', 'Further afield']].map(([k, l]) => `<button type="button" data-act="tier" data-t="${k}" aria-pressed="${priceTier === k}">${l}</button>`).join('')}</div></div>` : ''}
     ${shown.length ? `<div class="cards">${shown.map(unitCard).join('')}</div>` : '<div class="empty">Nothing matches that filter right now. Join the waitlist and we will tell you when something frees up.</div>'}
   </section>
 
@@ -1113,6 +1109,7 @@ document.addEventListener('submit', async e => {
 function render() {
   document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === (view === 'unit' ? 'site' : view)));
   $('#brand-name').textContent = prop().name;
+  const tb = $('#tierbar'); if (tb) { const show = loaded && (view === 'site' || view === 'unit'); tb.innerHTML = show ? priceBar() : ''; tb.hidden = !show || !tb.innerHTML; }
   const y = scrollY;
   const lb = document.querySelector('.seg button[data-view="landlord"]'); if (lb) lb.hidden = mode !== 'landlord' && view !== 'landlord';
   $('#app').innerHTML = view === 'invite' ? viewInvite() : view === 'tenant' ? viewTenant() : view === 'landlord' ? viewLandlord() : view === 'unit' ? viewUnit() : viewSite();

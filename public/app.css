@@ -226,9 +226,24 @@ pre.draft{white-space:pre-wrap;font:13px/1.5 var(--f-mono);background:var(--surf
 .linkish{border:0;background:none;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit}
 .linkish:hover{color:var(--ink)}
 @media (max-width:520px){#install-btn{padding:6px 10px;font-size:12.5px}}
-.section{scroll-margin-top:84px}
+.section{scroll-margin-top:130px}
 a{color:var(--accent)}
 #included .incl{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
 #included .incl b{font-size:17px}
-.pricebar{padding-block:10px;border-bottom:1px solid var(--line)}
-.pricebar .filters button{font-weight:600}
+.tierbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-block:6px 8px;border-top:1px solid var(--line);font-size:13.5px}
+.tierbar .filters button{font-weight:600;padding:5px 11px;font-size:13px}
+/* Compact header on phones so the price switch stays visible without taking over the screen */
+@media (max-width:640px){
+  .topbar .wrap{flex-wrap:nowrap;gap:8px;padding-block:6px}
+  .topbar .wrap > .row{flex-wrap:nowrap;gap:6px}
+  .brand{font-size:17px;gap:8px}
+  .brand img{width:32px;height:32px}
+  #install-btn{padding:6px 8px}
+  #install-btn .install-text{display:none}
+  .seg button{padding:6px 10px;font-size:13px}
+  .tierbar{justify-content:center;padding-block:5px 6px}
+  .tierbar .tier-label{display:none}
+  .tierbar .filters{flex-wrap:nowrap}
+  .tierbar .filters button{padding:5px 9px;font-size:12.5px}
+}
+@media (max-width:420px){#brand-name{display:none}}
