@@ -125,3 +125,12 @@ ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=a-long-test-password npm start
 ```
 
 Open http://localhost:3000. Without a `DATABASE_URL` it saves to `website/data/dev-db.json`, which is never uploaded.
+
+## Connect your email (Landlord → Email)
+1. In Railway, open your website service → **Variables** → **+ New Variable**, and add:
+   - `MAIL_USER` = `pete@theoldmillkineton.co.uk`
+   - `MAIL_PASSWORD` = that mailbox's password
+2. Railway redeploys automatically. Open **Landlord → Email** to see your inbox.
+3. Waitlist alerts get a **Send email** button, invitations get **Email it to them**, and you're emailed whenever someone sends a request.
+
+For a provider other than IONOS, also set `MAIL_IMAP_HOST` and `MAIL_SMTP_HOST`.

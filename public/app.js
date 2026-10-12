@@ -632,11 +632,11 @@ function viewLandlord() {
   const pend = S.outbox.filter(o => o.status === 'pending').length;
   const newEnq = S.enquiries.filter(e => e.status === 'new').length;
   const tab = (k, l, n) => `<button type="button" role="tab" data-act="ltab" data-tab="${k}" aria-selected="${ltab === k}">${l}${n ? `<span class="count">${n}</span>` : ''}</button>`;
-  const body = {overview: lOverview, spaces: lSpaces, enquiries: lEnquiries, tenants: lTenants, messages: lMessages, invoices: lInvoices, settings: lSettings, notify: lNotify}[ltab]();
+  const body = {overview: lOverview, spaces: lSpaces, enquiries: lEnquiries, tenants: lTenants, messages: lMessages, invoices: lInvoices, settings: lSettings, notify: lNotify, email: lEmail}[ltab]();
   return `<div class="dash wrap">
     <div class="dash-head"><div><p class="eyebrow">Landlord</p><h1 class="h2" style="font-size:48px">${esc(prop().name)}</h1></div>
       <div class="row"><button class="btn" data-act="msg-new">Message tenants</button><button class="btn primary" data-act="inv-new">New invoice</button>${isInstalled() ? '' : '<button class="btn ghost" data-act="get-app">Get the app</button>'}<button class="btn ghost" data-act="password">Change password</button><button class="btn ghost" data-act="logout">Sign out</button></div></div>
-    <div class="tabs" role="tablist">${tab('overview', 'Overview')}${tab('spaces', 'Spaces')}${tab('enquiries', 'Enquiries', newEnq)}${tab('tenants', 'Tenants')}${tab('invoices', 'Invoices')}${tab('messages', 'Messages')}${tab('notify', 'Waitlist alerts', pend)}${tab('settings', 'Wi-Fi & details')}</div>
+    <div class="tabs" role="tablist">${tab('overview', 'Overview')}${tab('spaces', 'Spaces')}${tab('enquiries', 'Enquiries', newEnq)}${tab('tenants', 'Tenants')}${tab('invoices', 'Invoices')}${tab('messages', 'Messages')}${tab('email', 'Email', mailState.unread)}${tab('notify', 'Waitlist alerts', pend)}${tab('settings', 'Wi-Fi & details')}</div>
     ${body}
   </div>`;
 }
@@ -721,10 +721,10 @@ function lMessages() {
 }
 function lNotify() {
   const list = [...S.outbox].sort((a, b) => (a.status === 'pending' ? 0 : 1) - (b.status === 'pending' ? 0 : 1) || (b.createdAt || '').localeCompare(a.createdAt || ''));
-  return `<p class="muted" style="max-width:68ch">When a space becomes available, an email is drafted here for everyone on the waitlist who asked about it. In this version, copy each one into your email and mark it sent. The full version would send them automatically.</p>
+  return `<p class="muted" style="max-width:68ch">When a space becomes available, an email is drafted here for everyone on the waitlist who asked about it. ${mailState.enabled ? `Click <b>Send email</b> to send it from ${esc(mailState.address)}.` : 'Copy each one into your email and mark it sent, or connect your mailbox (see the Email tab) to send them from here.'}</p>
     ${list.length ? `<div class="grid2">${list.map(o => `<section class="panel"><div class="row" style="justify-content:space-between"><span><b>${esc(o.name)}</b><br><span class="mono muted">${esc(o.to)}</span></span><span class="pill s-${o.status}">${o.status === 'pending' ? 'Ready to send' : 'Sent'}</span></div>
       <pre class="draft">Subject: ${esc(o.subject)}\n\n${esc(o.body)}</pre>
-      <div class="row"><button class="btn sm" data-act="out-copy" data-id="${esc(o.id)}">Copy email</button>${o.status === 'pending' ? `<button class="btn sm primary" data-act="out-sent" data-id="${esc(o.id)}">Mark sent</button>` : ''}<button class="btn sm danger" data-act="out-del" data-id="${esc(o.id)}">Delete</button></div></section>`).join('')}</div>` : '<div class="empty">No alerts yet. Set a space to Available on the Spaces tab and alerts for matching waitlist entries will appear here.</div>'}`;
+      <div class="row">${mailState.enabled && o.status === 'pending' ? `<button class="btn sm primary" data-act="out-send" data-id="${esc(o.id)}">Send email</button>` : ''}<button class="btn sm" data-act="out-copy" data-id="${esc(o.id)}">Copy email</button>${o.status === 'pending' ? `<button class="btn sm primary" data-act="out-sent" data-id="${esc(o.id)}">Mark sent</button>` : ''}<button class="btn sm danger" data-act="out-del" data-id="${esc(o.id)}">Delete</button></div></section>`).join('')}</div>` : '<div class="empty">No alerts yet. Set a space to Available on the Spaces tab and alerts for matching waitlist entries will appear here.</div>'}`;
 }
 function lSettings() {
   const P = prop(), nets = S.wifi?.networks || [];
@@ -1001,6 +1001,73 @@ function propForm() {
   });
 }
 
+/* ---------- mailbox ---------- */
+const mailState = {enabled: false, address: null, folder: 'inbox', list: null, loading: false, error: '', unread: 0, checked: false};
+async function mailStatus() {
+  try { const r = await api('GET', '/api/admin/mail/status'); Object.assign(mailState, r, {checked: true}); } catch (e) { mailState.checked = true; }
+  if (mailState.enabled) loadMail(true); else render();
+}
+async function loadMail(quiet) {
+  if (!mailState.enabled) return;
+  mailState.loading = true; mailState.error = ''; if (!quiet) render();
+  try {
+    const r = await api('GET', `/api/admin/mail/${mailState.folder}`);
+    mailState.list = r.messages;
+    if (mailState.folder === 'inbox') mailState.unread = r.messages.filter(m => !m.seen).length;
+  } catch (e) { mailState.error = e.message; }
+  mailState.loading = false; render();
+}
+const shortDate = iso => { const d = new Date(iso), now = new Date(); return d.toDateString() === now.toDateString() ? d.toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'}) : d.toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}); };
+function lEmail() {
+  if (!mailState.checked) return '<div class="empty">Checking your mailbox…</div>';
+  if (!mailState.enabled) return `<section class="panel" style="max-width:68ch"><h3>Connect your mailbox</h3>
+    <p>Read and send email from your IONOS address here. In <b>Railway → your service → Variables</b>, add:</p>
+    <ul class="ticks"><li><span class="mono">MAIL_USER</span> = your email address, e.g. <span class="mono">pete@theoldmillkineton.co.uk</span></li><li><span class="mono">MAIL_PASSWORD</span> = that mailbox's password</li></ul>
+    <p class="muted" style="font-size:13.5px">Railway restarts the site by itself. The password stays on the server and is never shown in the page.</p></section>`;
+  const f = (k, l) => `<button type="button" data-act="mail-folder" data-f="${k}" aria-pressed="${mailState.folder === k}">${l}</button>`;
+  const L = mailState.list;
+  return `<div class="row" style="justify-content:space-between"><div class="filters">${f('inbox', 'Inbox')}${f('sent', 'Sent')}<button type="button" data-act="mail-refresh">${mailState.loading ? 'Loading…' : 'Refresh'}</button></div>
+      <div class="row"><span class="muted mono" style="font-size:13px">${esc(mailState.address)}</span><button class="btn primary" data-act="mail-new">New email</button></div></div>
+    ${mailState.error ? `<div class="empty" style="color:var(--danger)">${esc(mailState.error)}</div>` : ''}
+    ${!L ? '<div class="empty">Loading your emails…</div>' : !L.length ? `<div class="empty">No emails in ${mailState.folder === 'sent' ? 'Sent' : 'your inbox'} yet.</div>` : `<div class="scroll"><table class="t mail">
+      <thead><tr><th>${mailState.folder === 'sent' ? 'To' : 'From'}</th><th>Subject</th><th style="text-align:right">Date</th></tr></thead><tbody>
+      ${L.map(m => `<tr class="${m.seen ? '' : 'unread'}" data-act="mail-open" data-uid="${m.uid}" tabindex="0" style="cursor:pointer">
+        <td>${esc((mailState.folder === 'sent' ? m.to : m.from).replace(/<[^>]*>/, '').trim() || (mailState.folder === 'sent' ? m.to : m.from))}</td><td>${esc(m.subject)}</td><td class="num" style="text-align:right;white-space:nowrap">${esc(shortDate(m.date))}</td></tr>`).join('')}
+      </tbody></table></div>`}`;
+}
+let openMail = null;
+async function mailOpen(uid) {
+  openSheet('<header><h2>Opening…</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header><p class="muted">Loading the message…</p>');
+  try {
+    const m = await api('GET', `/api/admin/mail/${mailState.folder}/${uid}`);
+    openMail = m;
+    const row = (mailState.list || []).find(x => x.uid === Number(uid)); if (row && !row.seen) { row.seen = true; mailState.unread = Math.max(0, mailState.unread - 1); render(); }
+    openSheet(`<header><h2 style="font-size:24px">${esc(m.subject)}</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header>
+      <div class="list" style="font-size:13.5px"><div><span class="muted">From</span><span>${esc(m.from)}</span></div><div><span class="muted">To</span><span>${esc(m.to)}</span></div>${m.cc ? `<div><span class="muted">Cc</span><span>${esc(m.cc)}</span></div>` : ''}<div><span class="muted">Date</span><span>${esc(new Date(m.date).toLocaleString('en-GB'))}</span></div></div>
+      <pre class="draft" style="max-height:50vh;overflow:auto;font-family:var(--f-body);font-size:14.5px">${esc(m.text || '(This email has no text version. Open it in IONOS Webmail to see it.)')}</pre>
+      ${m.attachments.length ? `<p class="muted" style="font-size:13px">Attachments (open in IONOS Webmail): ${m.attachments.map(a => esc(a.filename)).join(', ')}</p>` : ''}
+      <footer><button class="btn" data-act="close">Close</button>${mailState.folder === 'inbox' ? '<button class="btn primary" data-act="mail-reply">Reply</button>' : ''}</footer>`);
+  } catch (e) { openSheet(`<header><h2>Couldn't open it</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header><p>${esc(e.message)}</p>`); }
+}
+function mailCompose({to = '', subject = '', text = '', inReplyTo, references, onSent} = {}) {
+  openForm({
+    title: inReplyTo ? 'Reply' : 'New email',
+    intro: `From <span class="mono">${esc(mailState.address)}</span>`,
+    fields: [
+      {id:'to', label:'To', value: to, required: true, full: true, placeholder: 'name@example.com (separate several with commas)'},
+      {id:'subject', label:'Subject', value: subject, required: true, full: true},
+      {id:'text', label:'Message', type:'textarea', rows: 10, value: text, required: true, full: true}
+    ],
+    submit: 'Send',
+    onSubmit: async v => {
+      await api('POST', '/api/admin/mail/send', {...v, inReplyTo, references});
+      toast('Email sent');
+      if (onSent) await onSent();
+      if (mailState.folder === 'sent') loadMail(true);
+    }
+  });
+}
+
 /* ---------- accounts ---------- */
 function portalCell(t) {
   const a = access.find(x => x.tenantId === t.id);
@@ -1013,11 +1080,11 @@ async function inviteTenant(id) {
   try {
     const r = await api('POST', `/api/admin/tenants/${encodeURIComponent(id)}/invite`);
     const first = (t.name || '').split(' ')[0] || 'there';
-    lastInvite = {link: r.link, message: `Hi ${first}, here's your link to ${r.reset ? 'reset your password for' : 'set up'} your tenant account at ${prop().name}: ${r.link}\nThe link works for 14 days. In the portal you'll find your invoices, Wi-Fi details and updates.`};
+    lastInvite = {to: t.email, name: t.name, reset: r.reset, link: r.link, message: `Hi ${first}, here's your link to ${r.reset ? 'reset your password for' : 'set up'} your tenant account at ${prop().name}: ${r.link}\nThe link works for 14 days. In the portal you'll find your invoices, Wi-Fi details and updates.`};
     openSheet(`<header><h2>${r.reset ? 'Password reset link' : 'Invitation link'}</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header>
       <p>Send this link to ${esc(t.name)} (<span class="mono">${esc(t.email)}</span>) by WhatsApp or email. They open it, choose a password, and their portal is ready. It works once and expires on ${fmtDate(r.expires)}.</p>
       <pre class="draft" style="user-select:all">${esc(r.link)}</pre>
-      <footer><button class="btn" data-act="copy-invite" data-what="link">Copy link</button><button class="btn primary" data-act="copy-invite" data-what="message">Copy message with link</button></footer>`);
+      <footer><button class="btn" data-act="copy-invite" data-what="link">Copy link</button>${mailState.enabled ? '<button class="btn primary" data-act="email-invite">Email it to them</button>' : ''}<button class="btn${mailState.enabled ? '' : ' primary'}" data-act="copy-invite" data-what="message">Copy message with link</button></footer>`);
     refreshAdmin();
   } catch (e) { toast(dbErr(e)); }
 }
@@ -1069,6 +1136,7 @@ async function refreshAdmin() {
   Object.assign(S, {property: d.property, wifi: d.wifi, units: d.units, tenants: d.tenants, invoices: d.invoices, messages: d.messages, enquiries: d.enquiries, outbox: d.outbox});
   access = d.access || [];
   render();
+  if (!mailState.checked) mailStatus();
 }
 async function loadAll() {
   try {
@@ -1160,6 +1228,13 @@ const ACT = {
   'wifi-send': () => messageForm(),
   'prop-edit': () => propForm(),
   'lp-edit': () => lpForm(),
+  'mail-folder': d => { mailState.folder = d.f; mailState.list = null; loadMail(); },
+  'mail-refresh': () => loadMail(),
+  'mail-open': d => mailOpen(d.uid),
+  'mail-new': () => mailCompose(),
+  'mail-reply': () => { const m = openMail; if (!m) return; const quoted = (m.text || '').split('\n').map(l => '> ' + l).join('\n'); mailCompose({to: m.replyTo || m.fromAddress, subject: /^re:/i.test(m.subject) ? m.subject : 'Re: ' + m.subject, text: `\n\nOn ${new Date(m.date).toLocaleString('en-GB')}, ${m.from} wrote:\n${quoted}`, inReplyTo: m.messageId, references: [...(m.references || []), m.messageId].filter(Boolean)}); },
+  'out-send': async d => { const o = S.outbox.find(x => x.id === d.id); if (!o) return; try { await api('POST', '/api/admin/mail/send', {to: o.to, subject: o.subject, text: o.body}); await ACT['out-sent'](d); toast(`Sent to ${o.name}`); } catch (e) { toast(e.message); } },
+  'email-invite': () => { const i = lastInvite; if (!i) return; mailCompose({to: i.to, subject: `Your ${prop().name} tenant account`, text: i.message.replace('\\n', '\n')}); },
   tier: d => { priceTier = d.t; tierChosen = true; try { localStorage.setItem('oldmill.priceTier', priceTier); } catch (e) {} render(); },
   'scroll-local': () => { setView('site'); setTimeout(() => document.getElementById('local-rates')?.scrollIntoView(), 50); },
   'out-copy': d => { const o = S.outbox.find(x => x.id === d.id); if (o) copyText(`To: ${o.to}\nSubject: ${o.subject}\n\n${o.body}`); },
@@ -1194,7 +1269,7 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !$('#modal').hidden) closeModal();
-  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('g[data-act]')) { e.preventDefault(); ACT[e.target.dataset.act]?.(e.target.dataset); }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('g[data-act], tr[data-act]')) { e.preventDefault(); ACT[e.target.dataset.act]?.(e.target.dataset); }
 });
 
 /* ---------- boot ---------- */

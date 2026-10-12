@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const { createStore } = require('./src/store');
 const seed = require('./src/seed.json');
+const mail = require('./src/mail');
 
 const PROD = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT || 3000;
@@ -206,6 +207,18 @@ function routes() {
     enq.createdAt = new Date().toISOString();
     await store.put('enquiries', newId(), enq);
     res.json({ status: enq.status });
+    // Let the landlord know straight away (doesn't hold up the visitor).
+    if (mail.enabled()) {
+      const unit = units.find(u => u.id === enq.interest);
+      const lines = [
+        `New ${enq.status === 'new' ? 'request' : 'waitlist sign-up'} from the website.`, '',
+        `Name: ${enq.name}`, `Business: ${enq.business}`, `Email: ${enq.email}`, `Phone: ${enq.phone}`,
+        `Space: ${unit ? unit.name : enq.interest}`, `Based: ${enq.based || '-'}${enq.postcode ? ` (${enq.postcode}${enq.distanceMiles != null ? `, ${enq.distanceMiles} miles away` : ''})` : ''}`,
+        `Ideal start: ${enq.start}`, '', enq.message, '', 'Reply to this email to answer them, or open Landlord → Enquiries.'
+      ];
+      mail.sendMail({ to: mail.address(), subject: `Old Mill enquiry: ${enq.name} (${enq.business})`, text: lines.join('\n'), replyTo: enq.email })
+        .catch(e => console.warn('Enquiry email not sent:', e.message));
+    }
   }));
 
   /* tenant */
@@ -285,6 +298,38 @@ function routes() {
     const u = ID.test(req.params.id) && await store.userBy('tenantId', req.params.id);
     if (u) await store.deleteUser(u.id);
     res.json({ ok: true });
+  }));
+
+  /* landlord mailbox */
+  const mailLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many emails sent in the last hour. Try again later.' } });
+  const notSetUp = res => res.status(503).json({ error: 'Email isn’t connected yet. Add MAIL_USER and MAIL_PASSWORD in Railway → Variables.' });
+  const mailError = (res, e) => { console.warn('Mail:', e.message); res.status(502).json({ error: /auth|login|credential/i.test(e.message) ? 'The mailbox refused the password. Check MAIL_PASSWORD in Railway.' : 'Couldn’t reach the mailbox. Try again in a moment.' }); };
+  admin.get('/mail/status', (req, res) => res.json({ enabled: mail.enabled(), address: mail.enabled() ? mail.address() : null }));
+  admin.get('/mail/:folder', wrap(async (req, res) => {
+    if (!mail.enabled()) return notSetUp(res);
+    const folder = req.params.folder === 'sent' ? 'sent' : 'inbox';
+    try { res.json({ messages: await mail.listMessages(folder, 60) }); } catch (e) { mailError(res, e); }
+  }));
+  admin.get('/mail/:folder/:uid', wrap(async (req, res) => {
+    if (!mail.enabled()) return notSetUp(res);
+    const uid = Number(req.params.uid);
+    if (!Number.isInteger(uid) || uid < 1) return res.status(400).json({ error: 'That message can’t be opened.' });
+    try {
+      const m = await mail.readMessage(req.params.folder === 'sent' ? 'sent' : 'inbox', uid);
+      m ? res.json(m) : res.status(404).json({ error: 'That message has gone. It may have been moved or deleted.' });
+    } catch (e) { mailError(res, e); }
+  }));
+  admin.post('/mail/send', mailLimiter, wrap(async (req, res) => {
+    if (!mail.enabled()) return notSetUp(res);
+    const b = req.body || {};
+    const to = String(b.to || '').split(/[,;]/).map(x => x.trim().replace(/^.*<([^>]+)>.*$/, '$1')).filter(Boolean);
+    if (!to.length || to.length > 20 || !to.every(x => EMAIL.test(x))) return res.status(400).json({ error: 'Check the “To” address. Separate several with commas.' });
+    const subject = clean(b.subject, 300), text = typeof b.text === 'string' ? b.text.slice(0, 50000) : '';
+    if (!subject) return res.status(400).json({ error: 'Add a subject.' });
+    if (!text.trim()) return res.status(400).json({ error: 'Write a message before sending.' });
+    const inReplyTo = clean(b.inReplyTo, 500) || undefined;
+    const references = Array.isArray(b.references) ? b.references.map(x => clean(x, 500)).filter(Boolean).slice(0, 20) : undefined;
+    try { await mail.sendMail({ to, subject, text, inReplyTo, references }); res.json({ ok: true }); } catch (e) { mailError(res, e); }
   }));
 
   api.use('/admin', admin);
