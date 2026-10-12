@@ -325,6 +325,14 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: Unit 5 service charge £85.');
   }
+  if (!done['2026-10-1d-two-floors']) {
+    const u = await store.get('units', '1d');
+    const want = seed.units.find(x => x.id === '1d');
+    if (u && !u.floors && want) await store.put('units', '1d', { ...strip(u), floors: want.floors, info: want.info, description: want.description, type: want.type, widthM: null, depthM: null });
+    done['2026-10-1d-two-floors'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: Unit 1D shown as two floors.');
+  }
 }
 
 async function ensureLandlord() {

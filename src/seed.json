@@ -143,16 +143,16 @@
    "code": "1D",
    "name": "Unit 1D",
    "group": "unit1",
-   "type": "Second floor (let as one)",
+   "type": "Top two floors (let as one)",
    "size": 1550,
    "rent": 900,
    "inclusive": true,
    "status": "available",
    "availableFrom": "",
-   "description": "The whole second floor, let as one: two rooms plus a large storage area. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
+   "description": "The top of the mill building, let as one: a large storage floor with two rooms on the floor above. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
    "order": 4,
-   "widthM": 24.0,
-   "depthM": 6.0,
+   "widthM": null,
+   "depthM": null,
    "ceilingM": null,
    "doorType": "Door",
    "doorWidthM": null,
@@ -160,9 +160,7 @@
    "serviceCharge": "included",
    "serviceChargeAmount": null,
    "info": [
-    "Room 1: 7.0 × 6.0 m",
-    "Room 2: 5.0 × 6.0 m",
-    "Storage area: 12.0 × 6.0 m",
+    "Two floors let as one: storage below, two rooms above",
     "Bills included: internet, electricity and water",
     "Shared entrance hall with a small kitchen and toilets"
    ],
@@ -171,7 +169,34 @@
     "Room 2",
     "Storage area"
    ],
-   "access": "Through the main building entrance on Mill Lane, then upstairs"
+   "access": "Through the main building entrance on Mill Lane, then upstairs",
+   "floors": [
+    {
+     "label": "Lower floor",
+     "rooms": [
+      {
+       "name": "Storage",
+       "w": 12,
+       "d": 6
+      }
+     ]
+    },
+    {
+     "label": "Upper floor",
+     "rooms": [
+      {
+       "name": "Room 1",
+       "w": 7,
+       "d": 6
+      },
+      {
+       "name": "Room 2",
+       "w": 5,
+       "d": 6
+      }
+     ]
+    }
+   ]
   },
   {
    "id": "2",
