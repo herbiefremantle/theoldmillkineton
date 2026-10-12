@@ -38,13 +38,13 @@ const LP_DEFAULT = {enabled: true, mode: 'percent', nearbyPct: 10, furtherPct: 2
 const localPricing = () => Object.assign({}, LP_DEFAULT, prop().localPricing || {});
 const TIERS = {kineton: 'Kineton businesses', nearby: 'Within 6 miles', further: 'Further afield'};
 // Which area's prices visitors are looking at (remembered on their device).
-let priceTier = 'kineton';
-try { const t = localStorage.getItem('oldmill.priceTier'); if (['kineton', 'nearby', 'further'].includes(t)) priceTier = t; } catch (e) {}
+let priceTier = 'kineton', tierChosen = false;
+try { const t = localStorage.getItem('oldmill.priceTier'); if (['kineton', 'nearby', 'further'].includes(t)) { priceTier = t; tierChosen = true; } } catch (e) {}
 const RATE_LABEL = {kineton: 'Kineton business rate', nearby: 'Within 6 miles rate', further: 'Standard rate'};
 function priceBar() {
   if (!localPricing().enabled) return '';
   const b = (k, l) => `<button type="button" data-act="tier" data-t="${k}" aria-pressed="${priceTier === k}">${l}</button>`;
-  return `<div class="wrap tierbar"><span class="tier-label"><b>Prices for a business based in:</b> <span class="muted">Kineton businesses get our best rates</span></span>
+  return `<div class="wrap tierbar${tierChosen ? '' : ' unchosen'}"><span class="tier-label"><b class="tier-q"><span class="tier-long">Where is your business based?</span><span class="tier-short">Where are you based?</span></b> <span class="muted tier-note">${tierChosen ? 'Prices shown for your area. Kineton businesses get our best rates' : 'Choose one to see your prices. Kineton businesses get our best rates'}</span></span>
     <div class="filters" role="group" aria-label="Show prices for a business based in">${b('kineton', 'Kineton')}${b('nearby', `Within ${esc(localPricing().nearbyMiles)} miles`)}${b('further', 'Further afield')}</div></div>`;
 }
 const usesLocal = u => localPricing().enabled && u.localPricing !== false && u.rent;
@@ -1153,7 +1153,7 @@ const ACT = {
   'wifi-send': () => messageForm(),
   'prop-edit': () => propForm(),
   'lp-edit': () => lpForm(),
-  tier: d => { priceTier = d.t; try { localStorage.setItem('oldmill.priceTier', priceTier); } catch (e) {} render(); },
+  tier: d => { priceTier = d.t; tierChosen = true; try { localStorage.setItem('oldmill.priceTier', priceTier); } catch (e) {} render(); },
   'scroll-local': () => { setView('site'); setTimeout(() => document.getElementById('local-rates')?.scrollIntoView(), 50); },
   'out-copy': d => { const o = S.outbox.find(x => x.id === d.id); if (o) copyText(`To: ${o.to}\nSubject: ${o.subject}\n\n${o.body}`); },
   'out-sent': async d => { const o = S.outbox.find(x => x.id === d.id); await put('outbox', {...o, status: 'sent', sentAt: new Date().toISOString()}); const e = S.enquiries.find(x => x.id === o.enquiryId); if (e && e.status === 'waitlist') await put('enquiries', {...e, status: 'contacted'}); },

@@ -247,3 +247,18 @@ a{color:var(--accent)}
   .tierbar .filters button{padding:5px 9px;font-size:12.5px}
 }
 @media (max-width:420px){#brand-name{display:none}}
+.tier-q{color:var(--ink)}
+.tier-short{display:none}
+.tierbar.unchosen .tier-label{background:var(--accent-soft);padding:4px 10px;border-radius:999px}
+.tierbar.unchosen .tier-q{color:var(--accent)}
+@media (max-width:640px){
+  .tierbar{gap:6px}
+  .tierbar .tier-label{display:block;width:100%;text-align:center;font-size:12.5px}
+  .tierbar .tier-note{display:none}
+  .tier-long{display:none}
+  .tier-short{display:inline}
+  .topbar .tierbar{flex-wrap:wrap}
+  .tierbar .tier-label{flex-basis:100%}
+  .tierbar .filters button{white-space:nowrap}
+  .tierbar.unchosen .tier-label{border-radius:8px}
+}
