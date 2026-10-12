@@ -3,7 +3,7 @@
   "name": "The Old Mill",
   "tagline": "Rooms, workshops and storage to let in Kineton. Kineton businesses from £250 a month, everything included.",
   "address": "Mill Lane, Kineton",
-  "description": "The Old Mill in Kineton has rooms, workshops and storage to let. The four Mill Rooms (each let on its own), Unit 2 and the small rooms 5A and 5B come with everything included in one monthly price: internet, electricity, water and the service charge. They suit any small business, from treatment rooms and craft studios to desk work. The workshop and warehouse units suit businesses that need more room.\n\nViewings are by appointment. If nothing suits you today, join the waitlist and we will message you as soon as a space comes free.",
+  "description": "The Old Mill in Kineton has rooms, workshops and storage to let. The four Mill Rooms, Unit 2 and the small rooms 5A and 5B come with everything included in one monthly price: internet, electricity, water and the service charge. They suit any small business, from treatment rooms and craft studios to desk work. The workshop and warehouse units suit businesses that need more room.\n\nViewings are by appointment. If nothing suits you today, join the waitlist and we will message you as soon as a space comes free.",
   "features": [
    "Kineton businesses from £250 a month, everything included, for any kind of small business",
    "Workshop and warehouse units with roller and double door access",
@@ -224,7 +224,8 @@
    "info": [
     "Bills included: internet, electricity and water",
     "Viewings by appointment",
-    "Shared entrance hall with a small kitchen and toilets"
+    "Shared entrance hall with a small kitchen and toilets",
+    "Tenant registers for business rates (Small Business Rate Relief may apply)"
    ],
    "photos": [
     {
@@ -240,7 +241,8 @@
      "src": "img/img-1434.jpg"
     }
    ],
-   "access": "Through the main building entrance on Mill Lane"
+   "access": "Through the main building entrance on Mill Lane",
+   "ratesIncluded": false
   },
   {
    "id": "3",

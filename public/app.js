@@ -55,7 +55,10 @@ const TERMS = {
 };
 const termOf = u => (u.termType === 'licence' || u.termType === 'lease') ? u.termType : (u.inclusive ? 'licence' : 'lease');
 const depositMonths = u => u.depositMonths != null && u.depositMonths !== '' ? Number(u.depositMonths) : (u.id === '1d' ? 2 : u.inclusive ? 1 : 2);
-const depositText = u => `${depositMonths(u)} month${depositMonths(u) === 1 ? '' : 's'}' rent`;
+const isMillRoom = u => !!u && u.group === 'unit1';
+const ratesIncluded = u => u.ratesIncluded != null ? !!u.ratesIncluded : !!u.inclusive;
+const depositText = u => isMillRoom(u) ? `${depositMonths(u)} month${depositMonths(u) === 1 ? '' : 's'}` :
+  `${depositMonths(u)} month${depositMonths(u) === 1 ? '' : 's'}' rent`;
 const reduced = u => u.status !== 'let' && u.wasRent && u.rent && Number(u.wasRent) > Number(u.rent);
 const scLine = u => u.serviceCharge === 'included' ? 'Service charge included'
   : u.serviceCharge === 'extra' ? (u.serviceChargeAmount ? `+ ${gbp(u.serviceChargeAmount)} service charge (Total ${gbp(totalRent(u))})` : '+ service charge (to be confirmed)')
@@ -362,7 +365,7 @@ function viewUnit() {
           <table class="spec"><tbody>
             <tr><td class="muted">Bills</td><td>${billsText(u)}</td></tr>
             <tr><td class="muted">Service charge</td><td>${scText(u, true)}</td></tr>
-            <tr><td class="muted">Business rates</td><td>${u.inclusive ? 'No need to register' : 'Tenant registers with the council. Up to 100% Small Business Rate Relief if you qualify'}</td></tr>
+            <tr><td class="muted">Business rates</td><td>${ratesIncluded(u) ? 'No need to register' : 'Tenant registers with the council. Up to 100% Small Business Rate Relief if you qualify'}</td></tr>
             <tr><td class="muted">Deposit</td><td>${depositText(u)}${u.rent && u.status !== 'let' ? ` <span class="muted" style="font-size:13px">(${gbp(depositMonths(u) * Number(u.rent))} at the Kineton rate)</span>` : ''}</td></tr>
             <tr><td class="muted">Terms</td><td>${esc(TERMS[termOf(u)].long)}</td></tr>
             <tr><td class="muted">Payment</td><td>${esc(payText())}</td></tr>
@@ -370,9 +373,9 @@ function viewUnit() {
         ${u.info && u.info.length ? `<section class="usec"><h2>Additional information</h2><ul class="ticks">${u.info.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>` : ''}
       </div>
       <aside class="panel aside">
-        <span class="eyebrow">${let_ ? 'Availability' : 'Rent'}</span>
+        <span class="eyebrow">${let_ ? 'Availability' : isMillRoom(u) ? 'Price' : 'Rent'}</span>
         ${let_ ? `<div class="price">Let</div><p class="muted">This space is let at the moment. Join the waitlist and we'll message you when it becomes available.</p>`
-          : `${reduced(u) ? `<div class="row" style="gap:8px"><span class="pill s-soon">Reduced</span><span class="muted">Rent was <s>${gbp(u.wasRent)}</s></span></div>` : ''}<div><span class="price">${u.rent ? gbp(u.rent) : 'On request'}</span>${u.rent ? '<span class="muted"> / month rent</span>' : ''}</div>${usesLocal(u) ? `<div class="list num" style="font-size:14px">${Object.keys(TIERS).map(k => `<div><span>${TIERS[k]}</span><b>${gbp(priceFor(u, k))}</b></div>`).join('')}</div><p class="muted" style="font-size:12.5px">Prices are per month and depend on where your business is based. <button type="button" class="linkish" data-act="scroll-local">How local rates work</button></p>` : ''}<p class="muted num" style="font-size:13.5px">${u.inclusive ? 'Everything included: rent, service charge and bills' : esc(scLine(u))}</p>`}
+          : `${reduced(u) ? `<div class="row" style="gap:8px"><span class="pill s-soon">Reduced</span><span class="muted">Rent was <s>${gbp(u.wasRent)}</s></span></div>` : ''}<div><span class="price">${u.rent ? gbp(u.rent) : 'On request'}</span>${u.rent ? `<span class="muted"> / month${isMillRoom(u) ? '' : ' rent'}</span>` : ''}</div>${usesLocal(u) ? `<div class="list num" style="font-size:14px">${Object.keys(TIERS).map(k => `<div><span>${TIERS[k]}</span><b>${gbp(priceFor(u, k))}</b></div>`).join('')}</div><p class="muted" style="font-size:12.5px">Prices are per month and depend on where your business is based. <button type="button" class="linkish" data-act="scroll-local">How local rates work</button></p>` : ''}<p class="muted num" style="font-size:13.5px">${u.inclusive ? (isMillRoom(u) ? 'Everything included: bills and service charge' : 'Everything included: rent, service charge and bills') : esc(scLine(u))}</p>`}
         <div class="list" style="font-size:14px">
           <div><span class="muted">Size</span><b>${u.size ? Number(u.size).toLocaleString('en-GB') + ' sq ft' : '—'}</b></div>
           <div><span class="muted">Service charge</span><b>${u.serviceCharge === 'included' ? 'Included' : u.serviceCharge === 'extra' ? (u.serviceChargeAmount && !let_ ? gbp(u.serviceChargeAmount) + ' (Total ' + gbp(totalRent(u)) + ')' : let_ ? 'Extra' : 'To be confirmed') : 'None'}</b></div>
@@ -460,7 +463,7 @@ function viewSite() {
       <section class="panel">
         <p class="eyebrow">Mill Rooms, Unit 2, 5A and 5B</p>
         <h3>One price, everything on</h3>
-        <p>The four Mill Rooms, Unit 2 and the two small rooms 5A and 5B are let on one monthly price covering internet, electricity, water and the service charge, with no business rates to register for. Use them for whatever your business needs, from treatment rooms and therapies to crafts, studios or desk work.</p>
+        <p>The four Mill Rooms, Unit 2 and the two small rooms 5A and 5B are let on one monthly price covering internet, electricity, water and the service charge. There are no business rates to register for in the Mill Rooms or Rooms 5A and 5B. Unit 2 tenants register for business rates themselves. Use them for whatever your business needs, from treatment rooms and therapies to crafts, studios or desk work.</p>
         <div class="incl">${INCLUDES.map(i => `<div style="background:var(--raise)"><b>${esc(i)}</b><span class="muted">Included</span></div>`).join('')}</div>
       </section>
       <section class="panel">
@@ -477,7 +480,7 @@ function viewSite() {
     <div class="grid2">
       <section class="panel"><h3>All-inclusive rooms</h3>
         <p class="muted" style="font-size:13.5px">Mill Rooms, Unit 2, Rooms 5A and 5B</p>
-        <ul class="ticks"><li>Simple licence agreement: 3-month minimum, then monthly</li><li>1 month's notice either side</li><li>Deposit of 1 month's rent (2 months for 1D)</li><li>One monthly payment covers rent, bills and service charge</li></ul></section>
+        <ul class="ticks"><li>Simple licence agreement: 3-month minimum, then monthly</li><li>1 month's notice either side</li><li>Deposit of 1 month (2 months for Mill Room 1D)</li><li>One monthly payment covers bills and service charge</li></ul></section>
       <section class="panel"><h3>Workshops, warehouse and units</h3>
         <p class="muted" style="font-size:13.5px">Units 3 to 7 and the garages</p>
         <ul class="ticks"><li>Lease with a 12-month minimum term (1 to 3 years available)</li><li>3 months' notice after the first 12 months</li><li>Deposit of 2 months' rent</li><li>Rent plus a monthly service charge. You pay your own electricity and business rates</li></ul></section>
@@ -555,7 +558,7 @@ function viewTenant() {
       <section class="panel"><h3>Your space</h3>
         <div class="list num">
           <div><span class="muted">Unit</span><b>${esc(u?.name || 'Not assigned')}</b></div>
-          <div><span class="muted">Monthly rent</span><b>${gbp(t.rent)}</b></div>
+          <div><span class="muted">${isMillRoom(u) ? 'Monthly price' : 'Monthly rent'}</span><b>${gbp(t.rent)}</b></div>
           <div><span class="muted">Bills</span><b>${u?.inclusive ? 'Internet, electricity & water included' : 'Paid by you'}</b></div>
           ${u ? `<div><span class="muted">Service charge</span><b>${scText(u, false)}</b></div>` : ''}
           <div><span class="muted">You pay by</span><b>${PAY[t.paymentMethod] || 'Bank transfer'}</b></div>
@@ -750,6 +753,7 @@ function unitForm(u) {
       {id:'status', label:'Status', type:'select', options:Object.entries(STATUS), value:u.status},
       {id:'availableFrom', label:'Available from (if coming soon)', type:'date', value:u.availableFrom},
       {id:'inclusive', label:'Rent includes internet, electricity and water', type:'checkbox', value:u.inclusive},
+      {id:'ratesIncluded', label:'No business rates to register for (covered by the landlord)', type:'checkbox', value:ratesIncluded(u), full:true},
       {id:'localPricing', label:'Use local business rates (the rent above is the Kineton rate)', type:'checkbox', value:u.localPricing !== false},
       {id:'nearbyExtra', label:'This space only: fixed extra within 6 miles (£)', type:'number', step:'0.01', value:u.nearbyExtra, hint:'Blank uses the site-wide amount'},
       {id:'furtherExtra', label:'This space only: extra further afield (£)', type:'number', step:'0.01', value:u.furtherExtra, hint:'Blank uses the site-wide amount'},
@@ -845,7 +849,7 @@ function nextInvoiceNumber(offset = 0) {
   const max = S.invoices.reduce((m, i) => { const r = /^OM-(\d{4})-(\d+)$/.exec(i.number || ''); return r && +r[1] === y ? Math.max(m, +r[2]) : m; }, 0);
   return `OM-${y}-${String(max + 1 + offset).padStart(4, '0')}`;
 }
-function rentLine(t, period) { const u = unitById(t.unitId); return `Rent, ${u?.name || 'unit'}, ${period}${u?.inclusive ? ' (internet, electricity and water included)' : ''}`; }
+function rentLine(t, period) { const u = unitById(t.unitId); return `${isMillRoom(u) ? '' : 'Rent, '}${u?.name || 'unit'}, ${period}${u?.inclusive ? ' (internet, electricity and water included)' : ''}`; }
 function scAmount(t) { const u = unitById(t.unitId); return u && u.serviceCharge === 'extra' && u.serviceChargeAmount ? Number(u.serviceChargeAmount) : null; }
 function rentLines(t, period) { const L = [{desc: rentLine(t, period), amount: Number(t.rent)}], sc = scAmount(t); if (sc) L.push({desc: `Service charge, ${unitById(t.unitId).name}, ${period}`, amount: sc}); return L; }
 function invoiceForm(tenantId) {

@@ -375,6 +375,20 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: Unit 1 renamed to the Mill Rooms.');
   }
+  if (!done['2026-10-unit2-rates']) {
+    const p = await store.get('site', 'property');
+    if (p && typeof p.description === 'string') { const d = strip(p); d.description = d.description.replace('The four Mill Rooms (each let on its own), Unit 2', 'The four Mill Rooms, Unit 2'); await store.put('site', 'property', d); }
+    const u = await store.get('units', '2');
+    if (u && u.ratesIncluded == null) {
+      const d = strip(u);
+      d.ratesIncluded = false;
+      if (Array.isArray(d.info) && !d.info.some(x => /business rates/i.test(x))) d.info.push('Tenant registers for business rates (Small Business Rate Relief may apply)');
+      await store.put('units', '2', d);
+    }
+    done['2026-10-unit2-rates'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: Unit 2 business rates, shorter Mill Rooms wording.');
+  }
 }
 
 async function ensureLandlord() {
