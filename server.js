@@ -410,6 +410,20 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: Mill Rooms numbered MR-1 to MR-4.');
   }
+  if (!done['2026-10-mr-letters']) {
+    const MR = { '1a': 'A', '1b': 'B', '1c': 'C', '1d': 'D' };
+    for (const [id, letter] of Object.entries(MR)) {
+      const u = await store.get('units', id);
+      if (!u) continue;
+      const d = strip(u);
+      if (/^MR-\d$/.test(d.code || '')) { if (d.name === `Mill Room ${d.code.slice(3)}`) d.name = `Mill Room ${letter}`; d.code = `MR-${letter}`; }
+      if (Array.isArray(d.info)) d.info = d.info.map(x => x.replace('with MR-2', 'with MR-B').replace('with MR-3', 'with MR-C'));
+      await store.put('units', id, d);
+    }
+    done['2026-10-mr-letters'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: Mill Rooms lettered MR-A to MR-D.');
+  }
 }
 
 async function ensureLandlord() {

@@ -23,8 +23,8 @@
  "units": [
   {
    "id": "1a",
-   "code": "MR-1",
-   "name": "Mill Room 1",
+   "code": "MR-A",
+   "name": "Mill Room A",
    "group": "unit1",
    "type": "Ground floor room",
    "size": 137,
@@ -56,8 +56,8 @@
   },
   {
    "id": "1b",
-   "code": "MR-2",
-   "name": "Mill Room 2",
+   "code": "MR-B",
+   "name": "Mill Room B",
    "group": "unit1",
    "type": "First floor room (small)",
    "size": 154,
@@ -76,7 +76,7 @@
    "serviceCharge": "included",
    "serviceChargeAmount": null,
    "info": [
-    "Can be let together with MR-3 as the whole first floor for £675 a month",
+    "Can be let together with MR-C as the whole first floor for £675 a month",
     "Bills included: internet, electricity and water",
     "Shared entrance hall with a small kitchen and toilets"
    ],
@@ -98,8 +98,8 @@
   },
   {
    "id": "1c",
-   "code": "MR-3",
-   "name": "Mill Room 3",
+   "code": "MR-C",
+   "name": "Mill Room C",
    "group": "unit1",
    "type": "First floor room (large)",
    "size": 281,
@@ -118,7 +118,7 @@
    "serviceCharge": "included",
    "serviceChargeAmount": null,
    "info": [
-    "Can be let together with MR-2 as the whole first floor for £675 a month",
+    "Can be let together with MR-B as the whole first floor for £675 a month",
     "Bills included: internet, electricity and water",
     "Shared entrance hall with a small kitchen and toilets"
    ],
@@ -140,8 +140,8 @@
   },
   {
    "id": "1d",
-   "code": "MR-4",
-   "name": "Mill Room 4",
+   "code": "MR-D",
+   "name": "Mill Room D",
    "group": "unit1",
    "type": "Top two floors (let as one)",
    "size": 1550,
