@@ -64,6 +64,19 @@ function publicProperty(p) {
   const { bankDetails, paymentNote, ...out } = p;
   return out;
 }
+// Distance from The Old Mill (Mill Lane, Kineton) to a UK postcode, via the free postcodes.io lookup.
+const MILL = { lat: 52.1572, lng: -1.5095 };
+async function milesFromMill(postcode) {
+  try {
+    const r = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`, { signal: AbortSignal.timeout(3000) });
+    if (!r.ok) return null;
+    const { result } = await r.json();
+    if (!result || result.latitude == null) return null;
+    const rad = d => d * Math.PI / 180, dLat = rad(result.latitude - MILL.lat), dLng = rad(result.longitude - MILL.lng);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(MILL.lat)) * Math.cos(rad(result.latitude)) * Math.sin(dLng / 2) ** 2;
+    return Math.round(3958.8 * 2 * Math.asin(Math.sqrt(a)) * 10) / 10;
+  } catch (e) { return null; }
+}
 function matchesInterest(interest, u) {
   return interest === 'any' || interest === u.id || (interest === 'unit1' && u.group === 'unit1') || (interest === 'large' && u.group !== 'unit1');
 }
@@ -170,6 +183,17 @@ function routes() {
       phone: clean(b.phone, 40), interest: valid.includes(interest) ? interest : 'any',
       start: /^\d{4}-\d{2}-\d{2}$/.test(b.start || '') ? b.start : '', message: clean(b.message, 2000), notify: !!b.notify
     };
+    if (['kineton', 'nearby', 'further'].includes(b.based)) enq.based = b.based;
+    const pc = clean(b.postcode, 10).toUpperCase().replace(/\s+/g, ' ');
+    if (/^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/.test(pc)) {
+      enq.postcode = pc;
+      const miles = await milesFromMill(pc);
+      if (miles != null) {
+        const lp = (await property()).localPricing || {};
+        enq.distanceMiles = miles;
+        enq.suggestedTier = miles <= 1.5 ? 'kineton' : miles <= (Number(lp.nearbyMiles) || 6) ? 'nearby' : 'further';
+      }
+    }
     if (!enq.name) return res.status(400).json({ error: 'Add your name to continue.' });
     if (!EMAIL.test(enq.email)) return res.status(400).json({ error: 'Enter a full email address, like name@business.co.uk.' });
     const free = units.some(u => u.status === 'available' && matchesInterest(enq.interest, u));

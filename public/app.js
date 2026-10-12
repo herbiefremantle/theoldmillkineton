@@ -33,6 +33,13 @@ const m2 = sqft => Math.round(sqft * 0.092903 * 10) / 10;
 const sizeText = u => u.size ? `${Number(u.size).toLocaleString('en-GB')} sq ft (${m2(u.size)} m²)` : (u.widthM && u.depthM ? `${Math.round(u.widthM * u.depthM * 10) / 10} m²` : 'On request');
 const scText = (u, pub) => u.serviceCharge === 'included' ? 'Included in rent' : u.serviceCharge === 'extra' ? (u.serviceChargeAmount && !(pub && u.status === 'let') ? `${gbp(u.serviceChargeAmount)} / month on top of rent (Total ${gbp(totalRent(u))})` : (pub && u.status === 'let') ? 'Payable on top of rent' : 'Payable on top of rent, amount to be confirmed') : 'None';
 const billsText = u => u.inclusive ? 'Internet, electricity & water included' : 'Electricity paid by tenant';
+// Local business rates: the listed rent is the Kineton rate; businesses further away pay a set amount more.
+const LP_DEFAULT = {enabled: true, nearbyExtra: 50, furtherExtra: 100, nearbyMiles: 6, nearbyPlaces: 'Tysoe, Wellesbourne and other villages within 6 miles', furtherPlaces: 'Leamington, Stratford, Coventry and beyond'};
+const localPricing = () => Object.assign({}, LP_DEFAULT, prop().localPricing || {});
+const TIERS = {kineton: 'Kineton businesses', nearby: 'Within 6 miles', further: 'Further afield'};
+const usesLocal = u => localPricing().enabled && u.localPricing !== false && u.rent;
+const tierExtra = tier => { const L = localPricing(); return tier === 'nearby' ? Number(L.nearbyExtra) || 0 : tier === 'further' ? Number(L.furtherExtra) || 0 : 0; };
+const priceFor = (u, tier) => u && u.rent ? Number(u.rent) + (usesLocal(u) ? tierExtra(tier) : 0) : null;
 const reduced = u => u.status !== 'let' && u.wasRent && u.rent && Number(u.wasRent) > Number(u.rent);
 const scLine = u => u.serviceCharge === 'included' ? 'Service charge included'
   : u.serviceCharge === 'extra' ? (u.serviceChargeAmount ? `+ ${gbp(u.serviceChargeAmount)} service charge (Total ${gbp(totalRent(u))})` : '+ service charge (to be confirmed)')
@@ -230,11 +237,13 @@ function unitCard(u) {
   const btn = u.status === 'available'
     ? `<button class="btn primary" data-act="enquire" data-unit="${esc(u.id)}">Request this space</button>`
     : `<button class="btn" data-act="enquire" data-unit="${esc(u.id)}" data-wait="1">Notify me when available</button>`;
-  const priceHTML = u.status === 'let' ? '<span class="muted">Currently let</span>' : `<span><b>${u.rent ? gbp(u.rent) : 'Rent on request'}</b>${u.rent ? ' / month' : ''}</span>`;
+  const priceHTML = u.status === 'let' ? '<span class="muted">Currently let</span>' : `<span><b>${u.rent ? gbp(u.rent) : 'Rent on request'}</b>${u.rent ? ' / month' : ''}${usesLocal(u) ? ' <span class="pill s-paid" style="margin-left:4px">Kineton rate</span>' : ''}</span>`;
+  const tiersHTML = u.status !== 'let' && usesLocal(u) ? `<div class="muted num" style="font-size:13px">Within 6 miles ${gbp(priceFor(u, 'nearby'))} · Further afield ${gbp(priceFor(u, 'further'))}</div>` : '';
   return `<article class="ucard">
     ${ph(photoList(u)[0], '', '')}
     <div class="ucard-top"><div><div class="ucode">${esc(u.code)}</div><div class="utype">${esc(u.type)}</div></div><span class="pill s-${esc(u.status)}">${STATUS[u.status] || esc(u.status)}</span></div>
     <div class="facts num"><span><b>${u.size ? Number(u.size).toLocaleString('en-GB') + ' sq ft' : 'Size on request'}</b></span>${priceHTML}</div>
+    ${tiersHTML}
     ${reduced(u) ? `<div class="row" style="gap:8px;font-size:13.5px"><span class="pill s-soon">Reduced</span><span>Rent was <s>${gbp(u.wasRent)}</s>, now <b>${gbp(u.rent)}</b></span></div>` : ''}
     <div class="muted num" style="font-size:13.5px">${u.status === 'let' ? (u.serviceCharge === 'included' ? 'Service charge included' : u.serviceCharge === 'extra' ? 'Service charge extra' : 'No service charge') : esc(scLine(u))} · ${u.inclusive ? 'Bills included' : 'Bills paid by tenant'}</div>
     ${u.status === 'soon' && u.availableFrom ? `<div style="font-size:13.5px">Available from <b>${fmtDate(u.availableFrom)}</b></div>` : ''}
@@ -312,7 +321,7 @@ function viewUnit() {
       <aside class="panel aside">
         <span class="eyebrow">${let_ ? 'Availability' : 'Rent'}</span>
         ${let_ ? `<div class="price">Let</div><p class="muted">This space is let at the moment. Join the waitlist and we'll message you when it becomes available.</p>`
-          : `${reduced(u) ? `<div class="row" style="gap:8px"><span class="pill s-soon">Reduced</span><span class="muted">Rent was <s>${gbp(u.wasRent)}</s></span></div>` : ''}<div><span class="price">${u.rent ? gbp(u.rent) : 'On request'}</span>${u.rent ? '<span class="muted"> / month rent</span>' : ''}</div><p class="muted num" style="font-size:13.5px">${u.inclusive ? 'Everything included: rent, service charge and bills' : esc(scLine(u))}</p>`}
+          : `${reduced(u) ? `<div class="row" style="gap:8px"><span class="pill s-soon">Reduced</span><span class="muted">Rent was <s>${gbp(u.wasRent)}</s></span></div>` : ''}<div><span class="price">${u.rent ? gbp(u.rent) : 'On request'}</span>${u.rent ? '<span class="muted"> / month rent</span>' : ''}</div>${usesLocal(u) ? `<div class="list num" style="font-size:14px">${Object.keys(TIERS).map(k => `<div${k === 'kineton' ? ' style="font-weight:700"' : ''}><span>${TIERS[k]}${k === 'kineton' ? ' <span class="pill s-paid">Best price</span>' : ''}</span><b>${gbp(priceFor(u, k))}</b></div>`).join('')}</div><p class="muted" style="font-size:12.5px">Prices are per month and depend on where your business is based. <button type="button" class="linkish" data-act="scroll-local">How local rates work</button></p>` : ''}<p class="muted num" style="font-size:13.5px">${u.inclusive ? 'Everything included: rent, service charge and bills' : esc(scLine(u))}</p>`}
         <div class="list" style="font-size:14px">
           <div><span class="muted">Size</span><b>${u.size ? Number(u.size).toLocaleString('en-GB') + ' sq ft' : '—'}</b></div>
           <div><span class="muted">Service charge</span><b>${u.serviceCharge === 'included' ? 'Included' : u.serviceCharge === 'extra' ? (u.serviceChargeAmount && !let_ ? gbp(u.serviceChargeAmount) + ' (Total ' + gbp(totalRent(u)) + ')' : let_ ? 'Extra' : 'To be confirmed') : 'None'}</b></div>
@@ -356,6 +365,18 @@ function viewSite() {
       </figure>
     </div>
   </section>
+
+  ${localPricing().enabled ? (() => { const L = localPricing(); return `<section class="section wrap" id="local-rates">
+    <div class="two" style="align-items:center">
+      <div class="prose"><p class="eyebrow">Local business rates</p><h2 class="h2">Our best prices are for Kineton businesses</h2>
+        <p>We want The Old Mill to be home to local businesses, so the prices shown on each space are our Kineton business rates. Businesses from nearby villages and further afield are just as welcome, at the rates below.</p></div>
+      <div class="kpis num" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+        <div class="kpi" style="background:var(--accent-soft)"><small>Kineton businesses</small><b>Best rate</b><small>The price shown on each space</small></div>
+        <div class="kpi"><small>Within ${esc(L.nearbyMiles)} miles</small><b>+${gbp(L.nearbyExtra)}</b><small>${esc(L.nearbyPlaces)}</small></div>
+        <div class="kpi"><small>Further afield</small><b>+${gbp(L.furtherExtra)}</b><small>${esc(L.furtherPlaces)}</small></div>
+      </div>
+    </div>
+  </section>`; })() : ''}
 
   <section class="section wrap" id="spaces">
     <div class="section-head"><h2 class="h2">The spaces</h2>
@@ -404,6 +425,9 @@ function enquireForm(unitId, wait) {
       {id:'name', label:'Your name', required:true}, {id:'business', label:'Business name'},
       {id:'email', label:'Email', type:'email', required:true}, {id:'phone', label:'Phone', type:'tel'},
       {id:'interest', label:'Space', type:'select', options: interestOptions(), value: unitId || 'any'},
+      ...(localPricing().enabled ? [
+        {id:'based', label:'Where is your business based?', type:'select', options: [['kineton', 'Kineton'], ['nearby', `Within ${localPricing().nearbyMiles} miles (e.g. Tysoe, Wellesbourne)`], ['further', 'Further afield (e.g. Leamington, Stratford)']], value: 'kineton'},
+        {id:'postcode', label:'Business postcode', placeholder:'e.g. CV35 0XX'}] : []),
       {id:'start', label:'Ideal start date', type:'date'},
       {id:'message', label:'Please tell us about your business and how you plan to use the space', type:'textarea', full:true, rows:4, placeholder:'e.g. what your business does, what you would use the space for, how many people, opening hours, any access or storage needs'},
       {id:'notify', label:'Message me when a matching space becomes available', type:'checkbox', value:true, full:true}
@@ -546,7 +570,7 @@ function lEnquiries() {
     ${list.map(e => `<tr>
       <td class="num">${fmtDate(e.createdAt)}</td>
       <td><b>${esc(e.name)}</b>${exampleChip(e)}<br><span class="muted" style="font-size:13px">${esc(e.business)}${e.business ? ' · ' : ''}<span class="mono">${esc(e.email)}</span>${e.phone ? ' · ' + esc(e.phone) : ''}</span>${e.message ? `<br><span style="font-size:13px">“${esc(e.message)}”</span>` : ''}</td>
-      <td>${esc(interestLabel(e.interest))}${e.start ? `<br><span class="muted" style="font-size:13px">from ${fmtDate(e.start)}</span>` : ''}${e.notify ? '<br><span class="muted" style="font-size:12.5px">Wants alerts</span>' : ''}</td>
+      <td>${esc(interestLabel(e.interest))}${e.based ? `<br><span class="pill s-${e.based === 'kineton' ? 'paid' : e.based === 'nearby' ? 'due' : 'let'}" style="margin-top:4px">${TIERS[e.based] || esc(e.based)}</span>${e.postcode ? ` <span class="mono" style="font-size:12.5px">${esc(e.postcode)}</span>` : ''}${e.distanceMiles != null ? ` <span class="muted" style="font-size:12.5px">${esc(e.distanceMiles)} mi away</span>` : ''}${e.suggestedTier && e.suggestedTier !== e.based ? `<br><span style="font-size:12.5px;color:var(--danger)">Postcode suggests ${esc(TIERS[e.suggestedTier] || '')}</span>` : ''}` : ''}${e.start ? `<br><span class="muted" style="font-size:13px">from ${fmtDate(e.start)}</span>` : ''}${e.notify ? '<br><span class="muted" style="font-size:12.5px">Wants alerts</span>' : ''}</td>
       <td><span class="pill s-${esc(e.status)}">${ENQ[e.status] || esc(e.status)}</span></td>
       <td><div class="row" style="gap:6px;flex-wrap:nowrap">
         ${!['converted'].includes(e.status) ? `<button class="btn sm primary" data-act="enq-convert" data-id="${esc(e.id)}">Make tenant</button>` : ''}
@@ -605,6 +629,14 @@ function lSettings() {
         <div><span class="muted">Phone</span><span>${P.phone ? esc(P.phone) : '<span class="chip">Not set</span>'}</span></div>
         <div><span class="muted">Extra note on invoices</span><span style="max-width:36ch;text-align:right">${esc(P.paymentNote) || '—'}</span></div>
       </div></section>
+    <section class="panel"><div class="row" style="justify-content:space-between"><h3>Local business rates</h3><button class="btn sm" data-act="lp-edit">Edit</button></div>
+      ${(() => { const L = localPricing(); return `<div class="list num">
+        <div><span class="muted">Status</span><b>${L.enabled ? 'On' : 'Off'}</b></div>
+        <div><span class="muted">Kineton businesses</span><b>Listed rent</b></div>
+        <div><span class="muted">Within ${esc(L.nearbyMiles)} miles</span><b>+${gbp(L.nearbyExtra)}</b></div>
+        <div><span class="muted">Further afield</span><b>+${gbp(L.furtherExtra)}</b></div>
+      </div><p class="muted" style="font-size:13.5px">Each space's listed rent is its Kineton rate. Switch it off for a single space in Spaces → Edit.</p>`; })()}
+    </section>
     <section class="panel"><div class="row" style="justify-content:space-between"><h3>Payment options</h3><button class="btn sm" data-act="prop-edit">Edit</button></div>
       <div class="list">
         <div><span class="muted">Offered to tenants</span><b>${esc((P.paymentMethods || []).map(k => PAY[k]).join(' and ') || 'None set')}</b></div>
@@ -631,6 +663,7 @@ function unitForm(u) {
       {id:'status', label:'Status', type:'select', options:Object.entries(STATUS), value:u.status},
       {id:'availableFrom', label:'Available from (if coming soon)', type:'date', value:u.availableFrom},
       {id:'inclusive', label:'Rent includes internet, electricity and water', type:'checkbox', value:u.inclusive},
+      {id:'localPricing', label:'Use local business rates (the rent above is the Kineton rate)', type:'checkbox', value:u.localPricing !== false},
       {id:'serviceCharge', label:'Service charge', type:'select', options:[['included', 'Included in rent'], ['extra', 'Charged on top of rent'], ['none', 'No service charge']], value:u.serviceCharge || 'none'},
       {id:'serviceChargeAmount', label:'Service charge per month (£)', type:'number', step:'0.01', value:u.serviceChargeAmount, hint:'Only if charged on top'},
       {id:'widthM', label:'Width (m)', type:'number', step:'0.01', value:u.widthM},
@@ -684,14 +717,15 @@ function tenantForm(t, fromEnq) {
       {id:'email', label:'Email', type:'email', value: t.email || fromEnq?.email || '', required:true},
       {id:'phone', label:'Phone', type:'tel', value: t.phone || fromEnq?.phone || ''},
       {id:'unitId', label:'Space', type:'select', options: freeOrMine.map(u => [u.id, `${u.name}${u.status === 'let' && u.id !== t.unitId ? ' (let)' : ''}`]), value: t.unitId || pre},
-      {id:'rent', label:'Monthly rent (£)', type:'number', step:'0.01', value: t.rent ?? '', hint: 'Leave blank to use the space’s listed rent'},
+      ...(localPricing().enabled ? [{id:'rateTier', label:'Rate', type:'select', options: Object.entries(TIERS), value: t.rateTier || fromEnq?.suggestedTier || fromEnq?.based || 'kineton'}] : []),
+      {id:'rent', label:'Monthly rent (£)', type:'number', step:'0.01', value: t.rent ?? '', hint: 'Leave blank to use the space’s price for the chosen rate'},
       {id:'leaseStart', label:'Tenancy start', type:'date', value: t.leaseStart || fromEnq?.start || today()},
       {id:'paymentMethod', label:'Pays by', type:'select', options: (prop().paymentMethods && prop().paymentMethods.length ? prop().paymentMethods : ['dd', 'bank']).map(k => [k, PAY[k]]), value: t.paymentMethod || 'dd'}
     ],
     submit: isNew ? 'Add tenant' : 'Save',
     onSubmit: async v => {
       const u = unitById(v.unitId);
-      const nt = {...t, ...v, id: t.id || uid(), rent: v.rent ?? u?.rent ?? null, status: 'active', example: isNew ? false : t.example};
+      const nt = {...t, ...v, id: t.id || uid(), rent: v.rent ?? priceFor(u, v.rateTier || 'kineton') ?? null, status: 'active', example: isNew ? false : t.example};
       if (isNew) delete nt.example;
       await put('tenants', nt);
       if (t.unitId && t.unitId !== v.unitId) { const old = unitById(t.unitId); if (old) await put('units', {...old, status: 'available'}).then(() => queueAlerts({...old, status:'available'})); }
@@ -786,6 +820,23 @@ function wifiForm(n) {
       if (i >= 0) nets[i] = nn; else nets.push(nn);
       await putDoc('wifi', {networks: nets}); toast('Wi-Fi saved');
     }
+  });
+}
+function lpForm() {
+  const L = localPricing();
+  openForm({
+    title: 'Local business rates',
+    intro: 'The rent listed on each space is the Kineton rate. These amounts are added for businesses based further away.',
+    fields: [
+      {id:'enabled', label:'Use local business rates', type:'checkbox', value:L.enabled, full:true},
+      {id:'nearbyMiles', label:'Nearby radius (miles)', type:'number', value:L.nearbyMiles},
+      {id:'nearbyExtra', label:'Extra per month, nearby (£)', type:'number', step:'0.01', value:L.nearbyExtra},
+      {id:'nearbyPlaces', label:'Nearby examples', value:L.nearbyPlaces, full:true},
+      {id:'furtherExtra', label:'Extra per month, further afield (£)', type:'number', step:'0.01', value:L.furtherExtra},
+      {id:'furtherPlaces', label:'Further afield examples', value:L.furtherPlaces, full:true}
+    ],
+    submit: 'Save',
+    onSubmit: async v => { await putDoc('property', {...prop(), localPricing: {...v, nearbyExtra: v.nearbyExtra ?? 0, furtherExtra: v.furtherExtra ?? 0, nearbyMiles: v.nearbyMiles ?? 6}}); toast('Local business rates saved'); }
   });
 }
 function propForm() {
@@ -969,6 +1020,8 @@ const ACT = {
   'wifi-del': d => confirmBox('Remove network', 'Tenants will no longer see this network in their portal.', 'Remove', () => putDoc('wifi', {networks: (S.wifi?.networks || []).filter(x => x.id !== d.id)})),
   'wifi-send': () => messageForm(),
   'prop-edit': () => propForm(),
+  'lp-edit': () => lpForm(),
+  'scroll-local': () => { setView('site'); setTimeout(() => document.getElementById('local-rates')?.scrollIntoView(), 50); },
   'out-copy': d => { const o = S.outbox.find(x => x.id === d.id); if (o) copyText(`To: ${o.to}\nSubject: ${o.subject}\n\n${o.body}`); },
   'out-sent': async d => { const o = S.outbox.find(x => x.id === d.id); await put('outbox', {...o, status: 'sent', sentAt: new Date().toISOString()}); const e = S.enquiries.find(x => x.id === o.enquiryId); if (e && e.status === 'waitlist') await put('enquiries', {...e, status: 'contacted'}); },
   'out-del': d => del('outbox', d.id),
