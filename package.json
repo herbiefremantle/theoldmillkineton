@@ -1,0 +1,23 @@
+{
+  "name": "the-old-mill",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Website, tenant portal and landlord admin for The Old Mill, Mill Lane, Kineton.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "2.4.3",
+    "connect-pg-simple": "10.0.0",
+    "express": "4.21.1",
+    "express-rate-limit": "7.4.1",
+    "express-session": "1.18.1",
+    "helmet": "7.2.0",
+    "pg": "8.13.1"
+  }
+}

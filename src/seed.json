@@ -1,0 +1,555 @@
+{
+ "property": {
+  "name": "The Old Mill",
+  "tagline": "Rooms, workshops and storage to let in Kineton, from £250 a month with everything included.",
+  "address": "Mill Lane, Kineton",
+  "description": "The Old Mill in Kineton has rooms, workshops and storage to let. The four rooms in the mill building (Unit 1), Unit 2 and the small rooms 5A and 5B come with everything included in one monthly price: internet, electricity, water and the service charge. They suit any small business, from treatment rooms and craft studios to desk work. The workshop and warehouse units suit businesses that need more room.\n\nViewings are by appointment. If nothing suits you today, join the waitlist and we will message you as soon as a space comes free.",
+  "features": [
+   "Rooms from £250 a month with everything included, for any kind of small business",
+   "Workshop and warehouse units with roller and double door access",
+   "Shared entrance hall with a small kitchen and toilets",
+   "Viewings by appointment: WhatsApp Pete on 07456 338 728",
+   "Tenant portal with invoices, Wi-Fi details and site updates"
+  ],
+  "email": "",
+  "phone": "07456 338 728",
+  "paymentNote": "",
+  "paymentMethods": [
+   "dd",
+   "bank"
+  ],
+  "bankDetails": ""
+ },
+ "units": [
+  {
+   "id": "1a",
+   "code": "1A",
+   "name": "Unit 1A",
+   "group": "unit1",
+   "type": "Ground floor room",
+   "size": 137,
+   "rent": 260,
+   "inclusive": true,
+   "status": "available",
+   "availableFrom": "",
+   "description": "A ground floor room in the mill building, let on one monthly price with everything included. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
+   "order": 1,
+   "widthM": 4.25,
+   "depthM": 3.0,
+   "ceilingM": null,
+   "doorType": "Door",
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "serviceCharge": "included",
+   "serviceChargeAmount": null,
+   "info": [
+    "Ground floor, no stairs",
+    "Bills included: internet, electricity and water",
+    "Shared entrance hall with a small kitchen and toilets"
+   ],
+   "photos": [
+    "Interior",
+    "Window view",
+    "Entrance"
+   ],
+   "access": "Through the main building entrance on Mill Lane"
+  },
+  {
+   "id": "1b",
+   "code": "1B",
+   "name": "Unit 1B",
+   "group": "unit1",
+   "type": "First floor room (small)",
+   "size": 154,
+   "rent": 275,
+   "inclusive": true,
+   "status": "available",
+   "availableFrom": "",
+   "description": "A bright first floor room with exposed beams and sash windows. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
+   "order": 2,
+   "widthM": 3.62,
+   "depthM": 3.95,
+   "ceilingM": null,
+   "doorType": "Door",
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "serviceCharge": "included",
+   "serviceChargeAmount": null,
+   "info": [
+    "Can be let together with Unit 1C as the whole first floor for £675 a month",
+    "Bills included: internet, electricity and water",
+    "Shared entrance hall with a small kitchen and toilets"
+   ],
+   "photos": [
+    {
+     "caption": "Room",
+     "src": "img/1st-floor-small-1.jpg"
+    },
+    {
+     "caption": "Windows",
+     "src": "img/1st-floor-small-2.jpg"
+    },
+    {
+     "caption": "Beams",
+     "src": "img/1st-floor-small-3.jpg"
+    }
+   ],
+   "access": "Through the main building entrance on Mill Lane, then upstairs"
+  },
+  {
+   "id": "1c",
+   "code": "1C",
+   "name": "Unit 1C",
+   "group": "unit1",
+   "type": "First floor room (large)",
+   "size": 281,
+   "rent": 450,
+   "inclusive": true,
+   "status": "available",
+   "availableFrom": "",
+   "description": "The larger first floor room: open plan, with original timber beams and windows on two sides. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
+   "order": 3,
+   "widthM": 4.35,
+   "depthM": 6.0,
+   "ceilingM": null,
+   "doorType": "Door",
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "serviceCharge": "included",
+   "serviceChargeAmount": null,
+   "info": [
+    "Can be let together with Unit 1B as the whole first floor for £675 a month",
+    "Bills included: internet, electricity and water",
+    "Shared entrance hall with a small kitchen and toilets"
+   ],
+   "photos": [
+    {
+     "caption": "Room",
+     "src": "img/1st-floor-large-1.jpg"
+    },
+    {
+     "caption": "Beams",
+     "src": "img/1st-floor-large-2.jpg"
+    },
+    {
+     "caption": "Windows",
+     "src": "img/1st-floor-large-3.jpg"
+    }
+   ],
+   "access": "Through the main building entrance on Mill Lane, then upstairs"
+  },
+  {
+   "id": "1d",
+   "code": "1D",
+   "name": "Unit 1D",
+   "group": "unit1",
+   "type": "Second floor (let as one)",
+   "size": 1550,
+   "rent": 900,
+   "inclusive": true,
+   "status": "available",
+   "availableFrom": "",
+   "description": "The whole second floor, let as one: two rooms plus a large storage area. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
+   "order": 4,
+   "widthM": 24.0,
+   "depthM": 6.0,
+   "ceilingM": null,
+   "doorType": "Door",
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "serviceCharge": "included",
+   "serviceChargeAmount": null,
+   "info": [
+    "Room 1: 7.0 × 6.0 m",
+    "Room 2: 5.0 × 6.0 m",
+    "Storage area: 12.0 × 6.0 m",
+    "Bills included: internet, electricity and water",
+    "Shared entrance hall with a small kitchen and toilets"
+   ],
+   "photos": [
+    "Room 1",
+    "Room 2",
+    "Storage area"
+   ],
+   "access": "Through the main building entrance on Mill Lane, then upstairs"
+  },
+  {
+   "id": "2",
+   "code": "2",
+   "name": "Unit 2",
+   "group": "main",
+   "type": "Ground floor room",
+   "size": 145,
+   "rent": 250,
+   "inclusive": true,
+   "status": "available",
+   "availableFrom": "",
+   "description": "A ground floor room with two large windows, let on one monthly price with everything included. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
+   "order": 5,
+   "widthM": 4.5,
+   "depthM": 3.0,
+   "ceilingM": null,
+   "doorType": "Door",
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "serviceCharge": "included",
+   "serviceChargeAmount": null,
+   "info": [
+    "Bills included: internet, electricity and water",
+    "Viewings by appointment",
+    "Shared entrance hall with a small kitchen and toilets"
+   ],
+   "photos": [
+    {
+     "caption": "Room",
+     "src": "img/unit-2-1.jpg"
+    },
+    {
+     "caption": "Windows",
+     "src": "img/unit-2-2.jpg"
+    },
+    {
+     "caption": "Interior",
+     "src": "img/img-1434.jpg"
+    }
+   ],
+   "access": "Through the main building entrance on Mill Lane"
+  },
+  {
+   "id": "3",
+   "code": "3",
+   "name": "Unit 3",
+   "group": "main",
+   "type": "Workshop",
+   "size": null,
+   "rent": 400,
+   "inclusive": false,
+   "status": "let",
+   "availableFrom": "",
+   "description": "A workshop with timber double doors, concrete floor and good natural light.",
+   "order": 6,
+   "widthM": null,
+   "depthM": null,
+   "ceilingM": null,
+   "doorType": "Wooden double doors to Mill Lane",
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "serviceCharge": "extra",
+   "serviceChargeAmount": 100,
+   "info": [
+    "Wooden double doors onto Mill Lane for loading",
+    "Shared entrance hall with a small kitchen and toilets",
+    "Also reached through the main building entrance",
+    "Electricity paid by tenant"
+   ],
+   "photos": [
+    {
+     "caption": "Workshop",
+     "src": "img/unit-3-1.jpg"
+    },
+    {
+     "caption": "Double doors",
+     "src": "img/unit-3-2.jpg"
+    },
+    {
+     "caption": "Interior",
+     "src": "img/unit-3-3.jpg"
+    },
+    {
+     "caption": "Interior",
+     "src": "img/unit-3-4.jpg"
+    },
+    {
+     "caption": "Interior",
+     "src": "img/unit-3-5.jpg"
+    }
+   ],
+   "access": "Through the main building entrance on Mill Lane"
+  },
+  {
+   "id": "4",
+   "code": "4",
+   "name": "Unit 4",
+   "group": "main",
+   "type": "Warehouse + office",
+   "size": 893,
+   "rent": 450,
+   "inclusive": false,
+   "status": "soon",
+   "availableFrom": "",
+   "description": "A warehouse unit with roller door access, plus its own office and entrance area.",
+   "order": 7,
+   "widthM": null,
+   "depthM": null,
+   "ceilingM": null,
+   "doorType": "Metal shutters to Mill Lane",
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "serviceCharge": "extra",
+   "serviceChargeAmount": 90,
+   "info": [
+    "Warehouse approx. 60–65 m²",
+    "Shared entrance hall with a small kitchen and toilets",
+    "Office 8 m²",
+    "Entrance 13 m²",
+    "Metal shutters onto Mill Lane for loading",
+    "Electricity paid by tenant"
+   ],
+   "photos": [
+    {
+     "caption": "Warehouse",
+     "src": "img/unit-4-1.jpg"
+    },
+    {
+     "caption": "Interior",
+     "src": "img/unit-4-2.jpg"
+    },
+    {
+     "caption": "Interior",
+     "src": "img/unit-4-3.jpg"
+    },
+    {
+     "caption": "Interior",
+     "src": "img/unit-4-4.jpg"
+    },
+    {
+     "caption": "Interior",
+     "src": "img/unit-4-5.jpg"
+    }
+   ],
+   "access": "Through the main building entrance on Mill Lane",
+   "wasRent": 600
+  },
+  {
+   "id": "5",
+   "code": "5",
+   "name": "Unit 5",
+   "group": "main",
+   "type": "Ground floor unit",
+   "size": null,
+   "rent": 350,
+   "inclusive": false,
+   "status": "available",
+   "availableFrom": "",
+   "description": "A carpeted ground floor unit with roof lights, in the middle of the building.",
+   "order": 8,
+   "widthM": null,
+   "depthM": null,
+   "ceilingM": null,
+   "doorType": "Roller door",
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "serviceCharge": "extra",
+   "serviceChargeAmount": null,
+   "info": [
+    "Roof lights for natural light",
+    "Shared entrance hall with a small kitchen and toilets",
+    "Electricity paid by tenant"
+   ],
+   "photos": [
+    {
+     "caption": "Interior",
+     "src": "img/unit-5-1.jpg"
+    },
+    {
+     "caption": "Interior",
+     "src": "img/unit-5-2.jpg"
+    },
+    {
+     "caption": "Interior",
+     "src": "img/unit-5-3.jpg"
+    },
+    {
+     "caption": "Interior",
+     "src": "img/unit-5-4.jpg"
+    },
+    {
+     "caption": "Interior",
+     "src": "img/unit-5-5.jpg"
+    }
+   ],
+   "access": "Through the main building entrance on Mill Lane",
+   "wasRent": 500
+  },
+  {
+   "id": "6",
+   "code": "6",
+   "name": "Unit 6",
+   "group": "main",
+   "type": "Commercial unit",
+   "size": null,
+   "rent": 500,
+   "inclusive": false,
+   "status": "let",
+   "availableFrom": "2027-01-01",
+   "description": "Self-contained unit with its own entrance.",
+   "order": 9,
+   "widthM": null,
+   "depthM": null,
+   "ceilingM": null,
+   "doorType": "Roller door",
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "serviceCharge": "extra",
+   "serviceChargeAmount": 86,
+   "info": [
+    "Own front entrance",
+    "Ground and first floor",
+    "Electricity paid by tenant"
+   ],
+   "photos": [
+    "Exterior",
+    "Interior"
+   ],
+   "access": "Own entrance at the front of the building, on Mill Lane"
+  },
+  {
+   "id": "7",
+   "code": "7",
+   "name": "Unit 7",
+   "group": "main",
+   "type": "Commercial unit",
+   "size": null,
+   "rent": 466,
+   "inclusive": false,
+   "status": "let",
+   "availableFrom": "",
+   "description": "The largest unit on site.",
+   "order": 10,
+   "widthM": null,
+   "depthM": null,
+   "ceilingM": null,
+   "doorType": "Roller door",
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "serviceCharge": "extra",
+   "serviceChargeAmount": 80,
+   "info": [
+    "Reached through the metal gates and across the yard",
+    "Electricity paid by tenant"
+   ],
+   "photos": [
+    "Exterior",
+    "Interior"
+   ],
+   "access": "Through the metal gates from Mill Lane into the yard"
+  },
+  {
+   "id": "5a",
+   "code": "5A",
+   "name": "Room 5A",
+   "group": "main",
+   "type": "Small room",
+   "size": null,
+   "rent": 55,
+   "inclusive": true,
+   "serviceCharge": "included",
+   "serviceChargeAmount": null,
+   "status": "let",
+   "description": "A small room off the entrance hall, let on one monthly price with everything included. Ideal for storage, or whatever your business needs.",
+   "info": [
+    "Everything included: internet, electricity and water",
+    "Shared entrance hall with a small kitchen and toilets"
+   ],
+   "photos": [
+    "Room"
+   ],
+   "access": "Through the main building entrance on Mill Lane",
+   "doorType": "Door",
+   "order": 8.1,
+   "widthM": null,
+   "depthM": null,
+   "ceilingM": null,
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "availableFrom": ""
+  },
+  {
+   "id": "5b",
+   "code": "5B",
+   "name": "Room 5B",
+   "group": "main",
+   "type": "Small room",
+   "size": null,
+   "rent": 45,
+   "inclusive": true,
+   "serviceCharge": "included",
+   "serviceChargeAmount": null,
+   "status": "available",
+   "description": "A small room off the entrance hall, let on one monthly price with everything included. Ideal for storage, or whatever your business needs.",
+   "info": [
+    "Everything included: internet, electricity and water",
+    "Shared entrance hall with a small kitchen and toilets"
+   ],
+   "photos": [
+    "Room"
+   ],
+   "access": "Through the main building entrance on Mill Lane",
+   "doorType": "Door",
+   "order": 8.2,
+   "widthM": null,
+   "depthM": null,
+   "ceilingM": null,
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "availableFrom": ""
+  },
+  {
+   "id": "g1",
+   "code": "G1",
+   "name": "Garage 1",
+   "group": "main",
+   "type": "Garage",
+   "size": null,
+   "rent": null,
+   "inclusive": false,
+   "serviceCharge": "none",
+   "serviceChargeAmount": null,
+   "status": "let",
+   "description": "A garage at The Old Mill.",
+   "info": [],
+   "photos": [
+    "Garage"
+   ],
+   "access": "",
+   "doorType": "Garage door",
+   "order": 11,
+   "widthM": null,
+   "depthM": null,
+   "ceilingM": null,
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "availableFrom": ""
+  },
+  {
+   "id": "g2",
+   "code": "G2",
+   "name": "Garage 2",
+   "group": "main",
+   "type": "Garage",
+   "size": null,
+   "rent": null,
+   "inclusive": false,
+   "serviceCharge": "none",
+   "serviceChargeAmount": null,
+   "status": "let",
+   "description": "A garage at The Old Mill.",
+   "info": [],
+   "photos": [
+    "Garage"
+   ],
+   "access": "",
+   "doorType": "Garage door",
+   "order": 12,
+   "widthM": null,
+   "depthM": null,
+   "ceilingM": null,
+   "doorWidthM": null,
+   "doorHeightM": null,
+   "availableFrom": ""
+  }
+ ],
+ "wifi": {
+  "networks": []
+ }
+}

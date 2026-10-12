@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<base href="/">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Rooms, workshops and storage to let at The Old Mill, Mill Lane, Kineton.">
+<title>The Old Mill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="icon" href="/img/logo-96.png">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand">
+      <img src="img/logo-96.png" alt="" width="40" height="40">
+      <span id="brand-name">The Old Mill</span>
+    </div>
+    <nav class="seg" aria-label="View">
+      <button type="button" data-view="site" aria-pressed="true">Website</button>
+      <button type="button" data-view="tenant" aria-pressed="false">Tenant portal</button>
+      <button type="button" data-view="landlord" aria-pressed="false" hidden>Landlord</button>
+    </nav>
+  </div>
+</header>
+<div class="banner" id="banner" hidden></div>
+<main id="app"></main>
+<div class="modal" id="modal" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" hidden></div>
+<script src="/app.js"></script>
+</body>
+</html>
