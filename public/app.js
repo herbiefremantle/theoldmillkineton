@@ -455,7 +455,7 @@ function viewSite() {
       <p>The prices shown on each space are our Kineton rates. We'd love The Old Mill to be full of village businesses, with people who can walk or cycle to work and keep trade local.</p>
       <p>Businesses from nearby villages and further afield are just as welcome. Each space shows their price too.</p>
     </div>
-    <figure class="hero-photo"><img src="img/1st-floor-large-1.jpg" alt="A bright first floor room in the mill building, with timber beams and two windows" loading="lazy" style="aspect-ratio:3/2;object-position:50% 50%"><figcaption>The Trapdoor Room, first floor</figcaption></figure>
+    <figure class="hero-photo"><img src="img/1st-floor-large-1.jpg" alt="A bright first floor room in the mill building, with timber beams and two windows" loading="lazy" style="aspect-ratio:3/2;object-position:50% 50%"><figcaption>Hatch, first floor</figcaption></figure>
     </div>
   </section>` : ''}
 
@@ -488,7 +488,7 @@ function viewSite() {
     <div class="grid2">
       <section class="panel"><h3>All-inclusive rooms</h3>
         <p class="muted" style="font-size:13.5px">Mill Rooms, Unit 2, Rooms 5A and 5B</p>
-        <ul class="ticks"><li>Simple licence agreement: 3-month minimum, then monthly</li><li>1 month's notice either side</li><li>Deposit of 1 month (2 months for the Hoist Loft)</li><li>One monthly payment covers bills and service charge</li></ul></section>
+        <ul class="ticks"><li>Simple licence agreement: 3-month minimum, then monthly</li><li>1 month's notice either side</li><li>Deposit of 1 month (2 months for Hoist Loft)</li><li>One monthly payment covers bills and service charge</li></ul></section>
       <section class="panel"><h3>Workshops, warehouse and units</h3>
         <p class="muted" style="font-size:13.5px">Units 3 to 6, the Stable Block and the garages</p>
         <ul class="ticks"><li>Lease with a 12-month minimum term (1 to 3 years available)</li><li>3 months' notice after the first 12 months</li><li>Deposit of 2 months' rent</li><li>Rent plus a monthly service charge. You pay your own electricity and business rates</li></ul></section>

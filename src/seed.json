@@ -23,8 +23,8 @@
  "units": [
   {
    "id": "1a",
-   "code": "Miller's Room",
-   "name": "The Miller's Room",
+   "code": "Miller",
+   "name": "Miller",
    "group": "unit1",
    "type": "Ground floor room",
    "size": 137,
@@ -32,7 +32,7 @@
    "inclusive": true,
    "status": "available",
    "availableFrom": "",
-   "description": "The Miller's Room is the ground floor room by the main entrance, let on one monthly price with everything included. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
+   "description": "Miller is the ground floor room by the main entrance, let on one monthly price with everything included. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
    "order": 1,
    "widthM": 4.25,
    "depthM": 3.0,
@@ -53,7 +53,7 @@
     "Entrance"
    ],
    "access": "Through the main building entrance on Mill Lane",
-   "shortName": "Miller's Room"
+   "shortName": "Miller"
   },
   {
    "id": "1b",
@@ -77,7 +77,7 @@
    "serviceCharge": "included",
    "serviceChargeAmount": null,
    "info": [
-    "Can be let together with the Trapdoor Room as the whole first floor for £675 a month",
+    "Can be let together with Hatch as the whole first floor for £675 a month",
     "Bills included: internet, electricity and water",
     "Shared entrance hall with a small kitchen and toilets"
    ],
@@ -100,8 +100,8 @@
   },
   {
    "id": "1c",
-   "code": "Trapdoor Room",
-   "name": "The Trapdoor Room",
+   "code": "Hatch",
+   "name": "Hatch",
    "group": "unit1",
    "type": "First floor room (large)",
    "size": 281,
@@ -139,12 +139,12 @@
     }
    ],
    "access": "Through the main building entrance on Mill Lane, then upstairs",
-   "shortName": "Trapdoor Room"
+   "shortName": "Hatch"
   },
   {
    "id": "1d",
    "code": "Hoist Loft",
-   "name": "The Hoist Loft",
+   "name": "Hoist Loft",
    "group": "unit1",
    "type": "Top two floors (let as one)",
    "size": 1550,

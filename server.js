@@ -443,6 +443,22 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: Mill Rooms named (Miller\'s Room, Loading Door, Trapdoor Room, Hoist Loft).');
   }
+  if (!done['2026-10-mill-room-names-2']) {
+    const rename = { '1a': ["The Miller's Room", 'Miller'], '1c': ['The Trapdoor Room', 'Hatch'], '1d': ['The Hoist Loft', 'Hoist Loft'] };
+    for (const [id, [oldName, name]] of Object.entries(rename)) {
+      const u = await store.get('units', id);
+      if (!u) continue;
+      const d = strip(u);
+      if (d.name === oldName) Object.assign(d, { name, shortName: name, code: name });
+      if (id === '1a' && typeof d.description === 'string') d.description = d.description.replace("The Miller's Room is the ground floor room", 'Miller is the ground floor room');
+      await store.put('units', id, d);
+    }
+    const b = await store.get('units', '1b');
+    if (b && Array.isArray(b.info)) await store.put('units', '1b', { ...strip(b), info: b.info.map(x => x.replace('with the Trapdoor Room', 'with Hatch')) });
+    done['2026-10-mill-room-names-2'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: Mill Rooms renamed Miller, Hatch, Hoist Loft.');
+  }
 }
 
 async function ensureLandlord() {
