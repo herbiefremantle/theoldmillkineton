@@ -174,18 +174,18 @@ function fallbackCopy(text) {
 const PLAN = {
   '4': {pts:'32,40 282,40 282,177 90,177', lx:150, ly:100},
   '3': {pts:'90,177 268,177 268,283 135,283', lx:168, ly:228},
-  '1a': {pts:'135,283 232,283 232,399 178,399', lx:162, ly:335, small:true},
+  '1a': {pts:'135,283 232,283 232,399 178,399', lx:160, ly:330, small:true},
   '2': {pts:'313,330 400,330 400,399 313,399', lx:326, ly:362, small:true},
   '5': {pts:'292,95 468,95 468,283 414,283 414,215 292,215', lx:350, ly:160},
   '6': {pts:'400,330 588,330 588,399 400,399', lx:470, ly:362, small:true},
-  '7': {pts:'594,90 760,90 760,390 695,390 695,180 594,180', lx:690, ly:138},
+  '7': {pts:'594,90 760,90 760,390 695,390 695,180 594,180', lx:612, ly:128},
   '5a': {pts:'295,218 351,218 351,281 295,281', lx:305, ly:256, tiny:true},
   '5b': {pts:'355,218 411,218 411,281 355,281', lx:365, ly:256, tiny:true},
   'g1': {pts:'469,93 527,93 527,177 469,177', lx:480, ly:142, tiny:true},
   'g2': {pts:'531,93 590,93 590,177 531,177', lx:542, ly:142, tiny:true},
-  '1b': {pts:'815,150 893,150 893,220 815,220', lx:828, ly:182, small:true},
-  '1c': {pts:'897,150 980,150 980,220 897,220', lx:910, ly:182, small:true},
-  '1d': {pts:'815,50 980,50 980,120 815,120', lx:828, ly:82, small:true}
+  '1b': {pts:'815,150 893,150 893,220 815,220', lx:822, ly:178, small:true},
+  '1c': {pts:'897,150 980,150 980,220 897,220', lx:904, ly:178, small:true},
+  '1d': {pts:'815,50 980,50 980,120 815,120', lx:826, ly:80, small:true}
 };
 function planSVG(list) {
   const fill = s => s === 'available' ? 'var(--accent)' : s === 'soon' ? 'var(--brass)' : 'var(--let)';
@@ -194,8 +194,14 @@ function planSVG(list) {
     const p = PLAN[u.id];
     return `<g class="blk" data-act="unit" data-id="${esc(u.id)}" tabindex="0" role="button" aria-label="${esc(u.name)}, ${STATUS[u.status] || ''}">
       <polygon points="${p.pts}" fill="${fill(u.status)}"></polygon>
-      ${u.shortName ? u.shortName.split(' ').map((w, i) => `<text x="${p.lx - 70}" y="${p.ly - 8 + i * 22}" font-size="20" font-weight="800" fill="${ink(u.status)}">${esc(w)}</text>`).join('') : `<text x="${p.lx}" y="${p.ly}" font-size="${p.tiny ? 19 : p.small ? 22 : 30}" font-weight="800" fill="${ink(u.status)}">${esc(u.code)}</text>`}
-      ${p.tiny ? '' : `<text x="${p.lx}" y="${p.ly + (p.small ? 20 : 24)}" font-size="${p.small ? 11 : 13}" font-weight="700" fill="${ink(u.status)}" letter-spacing=".5">${esc((STATUS[u.status] || '').toUpperCase())}</text>`}
+      ${(() => {
+        const words = u.shortName ? u.shortName.split(' ') : [u.code];
+        const fs = u.shortName ? (p.small ? 15 : 20) : (p.tiny ? 19 : p.small ? 22 : 30), lh = fs + 2;
+        const top = p.ly - (words.length - 1) * lh / 2;
+        const name = words.map((w, i) => `<text x="${p.lx}" y="${top + i * lh}" font-size="${fs}" font-weight="800" fill="${ink(u.status)}">${esc(w)}</text>`).join('');
+        const statusY = top + (words.length - 1) * lh + (p.small ? 18 : 22);
+        return name + (p.tiny ? '' : `<text x="${p.lx}" y="${statusY}" font-size="${p.small ? 10 : 13}" font-weight="700" fill="${ink(u.status)}" letter-spacing=".5">${esc((STATUS[u.status] || '').toUpperCase())}</text>`);
+      })()}
     </g>`;
   }).join('');
   const arrow = (x, y1, y2) => `<path d="M${x} ${y1} L${x} ${y2} M${x - 7} ${y2 + 9} L${x} ${y2} L${x + 7} ${y2 + 9}" stroke="var(--ink)" stroke-width="2.5" fill="none" stroke-linecap="round"></path>`;
@@ -220,7 +226,7 @@ function planSVG(list) {
     <text x="815" y="22" font-size="13" fill="var(--muted)" font-weight="800" letter-spacing="1">MILL ROOMS · UPSTAIRS</text>
     <text x="815" y="44" font-size="12" fill="var(--muted)" font-weight="600">Second floor (with storage)</text>
     <text x="815" y="144" font-size="12" fill="var(--muted)" font-weight="600">First floor</text>
-    <text x="815" y="244" font-size="12" fill="var(--muted)" font-weight="600">Ground floor: MR-A, on the plan</text>
+    <text x="815" y="244" font-size="12" fill="var(--muted)" font-weight="600">Ground floor: on the main plan</text>
     <line x1="815" y1="286" x2="840" y2="286" stroke="var(--brass)" stroke-width="7" stroke-linecap="round"></line>
     <text x="850" y="290" font-size="12" fill="var(--ink)" font-weight="600">Loading doors to Mill Lane</text>
     <path d="M827 324 L827 304 M820 313 L827 304 L834 313" stroke="var(--ink)" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
@@ -449,7 +455,7 @@ function viewSite() {
       <p>The prices shown on each space are our Kineton rates. We'd love The Old Mill to be full of village businesses, with people who can walk or cycle to work and keep trade local.</p>
       <p>Businesses from nearby villages and further afield are just as welcome. Each space shows their price too.</p>
     </div>
-    <figure class="hero-photo"><img src="img/1st-floor-large-1.jpg" alt="A bright first floor room in the mill building, with timber beams and two windows" loading="lazy" style="aspect-ratio:3/2;object-position:50% 50%"><figcaption>First floor room, MR-C</figcaption></figure>
+    <figure class="hero-photo"><img src="img/1st-floor-large-1.jpg" alt="A bright first floor room in the mill building, with timber beams and two windows" loading="lazy" style="aspect-ratio:3/2;object-position:50% 50%"><figcaption>The Trapdoor Room, first floor</figcaption></figure>
     </div>
   </section>` : ''}
 
@@ -482,7 +488,7 @@ function viewSite() {
     <div class="grid2">
       <section class="panel"><h3>All-inclusive rooms</h3>
         <p class="muted" style="font-size:13.5px">Mill Rooms, Unit 2, Rooms 5A and 5B</p>
-        <ul class="ticks"><li>Simple licence agreement: 3-month minimum, then monthly</li><li>1 month's notice either side</li><li>Deposit of 1 month (2 months for MR-D)</li><li>One monthly payment covers bills and service charge</li></ul></section>
+        <ul class="ticks"><li>Simple licence agreement: 3-month minimum, then monthly</li><li>1 month's notice either side</li><li>Deposit of 1 month (2 months for the Hoist Loft)</li><li>One monthly payment covers bills and service charge</li></ul></section>
       <section class="panel"><h3>Workshops, warehouse and units</h3>
         <p class="muted" style="font-size:13.5px">Units 3 to 6, the Stable Block and the garages</p>
         <ul class="ticks"><li>Lease with a 12-month minimum term (1 to 3 years available)</li><li>3 months' notice after the first 12 months</li><li>Deposit of 2 months' rent</li><li>Rent plus a monthly service charge. You pay your own electricity and business rates</li></ul></section>
@@ -746,7 +752,7 @@ function unitForm(u) {
   openForm({
     title: isNew ? 'Add a space' : 'Edit ' + u.name,
     fields: [
-      {id:'code', label:'Short code (as on the plan)', value:u.code, required:true, placeholder:'e.g. MR-C or 3'},
+      {id:'code', label:'Short code (as on the plan)', value:u.code, required:true, placeholder:'e.g. 3'},
       {id:'group', label:'Building', type:'select', options:[['unit1', 'Mill Rooms'], ['main', 'Units 2–6, Stable Block, rooms and garages']], value:u.group},
       {id:'type', label:'Type', value:u.type, required:true},
       {id:'size', label:'Size (sq ft)', type:'number', value:u.size},

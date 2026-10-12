@@ -23,8 +23,8 @@
  "units": [
   {
    "id": "1a",
-   "code": "MR-A",
-   "name": "Mill Room A",
+   "code": "Miller's Room",
+   "name": "The Miller's Room",
    "group": "unit1",
    "type": "Ground floor room",
    "size": 137,
@@ -32,7 +32,7 @@
    "inclusive": true,
    "status": "available",
    "availableFrom": "",
-   "description": "A ground floor room in the mill building, let on one monthly price with everything included. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
+   "description": "The Miller's Room is the ground floor room by the main entrance, let on one monthly price with everything included. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
    "order": 1,
    "widthM": 4.25,
    "depthM": 3.0,
@@ -52,12 +52,13 @@
     "Window view",
     "Entrance"
    ],
-   "access": "Through the main building entrance on Mill Lane"
+   "access": "Through the main building entrance on Mill Lane",
+   "shortName": "Miller's Room"
   },
   {
    "id": "1b",
-   "code": "MR-B",
-   "name": "Mill Room B",
+   "code": "Loading Door",
+   "name": "The Loading Door",
    "group": "unit1",
    "type": "First floor room (small)",
    "size": 154,
@@ -65,7 +66,7 @@
    "inclusive": true,
    "status": "available",
    "availableFrom": "",
-   "description": "A bright first floor room with exposed beams and sash windows. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
+   "description": "A bright first floor room with exposed beams, sash windows and the mill's old loading door to the outside. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
    "order": 2,
    "widthM": 3.62,
    "depthM": 3.95,
@@ -76,7 +77,7 @@
    "serviceCharge": "included",
    "serviceChargeAmount": null,
    "info": [
-    "Can be let together with MR-C as the whole first floor for £675 a month",
+    "Can be let together with the Trapdoor Room as the whole first floor for £675 a month",
     "Bills included: internet, electricity and water",
     "Shared entrance hall with a small kitchen and toilets"
    ],
@@ -94,12 +95,13 @@
      "src": "img/1st-floor-small-3.jpg"
     }
    ],
-   "access": "Through the main building entrance on Mill Lane, then upstairs"
+   "access": "Through the main building entrance on Mill Lane, then upstairs",
+   "shortName": "Loading Door"
   },
   {
    "id": "1c",
-   "code": "MR-C",
-   "name": "Mill Room C",
+   "code": "Trapdoor Room",
+   "name": "The Trapdoor Room",
    "group": "unit1",
    "type": "First floor room (large)",
    "size": 281,
@@ -107,7 +109,7 @@
    "inclusive": true,
    "status": "available",
    "availableFrom": "",
-   "description": "The larger first floor room: open plan, with original timber beams and windows on two sides. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
+   "description": "The larger first floor room: open plan, with original timber beams, windows on two sides and the hatch in the ceiling where the hoist chain once ran. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
    "order": 3,
    "widthM": 4.35,
    "depthM": 6.0,
@@ -118,7 +120,7 @@
    "serviceCharge": "included",
    "serviceChargeAmount": null,
    "info": [
-    "Can be let together with MR-B as the whole first floor for £675 a month",
+    "Can be let together with the Loading Door as the whole first floor for £675 a month",
     "Bills included: internet, electricity and water",
     "Shared entrance hall with a small kitchen and toilets"
    ],
@@ -136,12 +138,13 @@
      "src": "img/1st-floor-large-3.jpg"
     }
    ],
-   "access": "Through the main building entrance on Mill Lane, then upstairs"
+   "access": "Through the main building entrance on Mill Lane, then upstairs",
+   "shortName": "Trapdoor Room"
   },
   {
    "id": "1d",
-   "code": "MR-D",
-   "name": "Mill Room D",
+   "code": "Hoist Loft",
+   "name": "The Hoist Loft",
    "group": "unit1",
    "type": "Top two floors (let as one)",
    "size": 1550,
@@ -149,7 +152,7 @@
    "inclusive": true,
    "status": "available",
    "availableFrom": "",
-   "description": "The top of the mill building, let as one: a large storage floor with two rooms on the floor above. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
+   "description": "The top of the mill building, let as one: two rooms with the original chain and pulley hoist still in the roof, and a low-ceilinged storage floor below. Use it for whatever your business needs: treatments and therapies, crafts, a studio or desk work.",
    "order": 4,
    "widthM": null,
    "depthM": null,
@@ -161,6 +164,7 @@
    "serviceChargeAmount": null,
    "info": [
     "Two floors let as one: storage below, two rooms above",
+    "Original chain and pulley hoist in the roof",
     "The storage floor has a low ceiling, about 5 ft (1.5 m)",
     "Bills included: internet, electricity and water",
     "Shared entrance hall with a small kitchen and toilets"
@@ -198,7 +202,8 @@
       }
      ]
     }
-   ]
+   ],
+   "shortName": "Hoist Loft"
   },
   {
    "id": "2",

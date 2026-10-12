@@ -424,6 +424,25 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: Mill Rooms lettered MR-A to MR-D.');
   }
+  if (!done['2026-10-mill-room-names']) {
+    for (const id of ['1a', '1b', '1c', '1d']) {
+      const u = await store.get('units', id), want = seed.units.find(x => x.id === id);
+      if (!u || !want) continue;
+      const d = strip(u);
+      if (/^MR-[A-D]$/.test(d.code || '')) {
+        Object.assign(d, { name: want.name, shortName: want.shortName, code: want.code });
+        if (typeof d.description === 'string' && /Use it for whatever your business needs/.test(d.description)) d.description = want.description;
+      }
+      if (Array.isArray(d.info)) {
+        d.info = d.info.map(x => x.replace('with MR-B', 'with the Loading Door').replace('with MR-C', 'with the Trapdoor Room'));
+        if (id === '1d' && !d.info.some(x => /hoist/i.test(x))) d.info.splice(1, 0, 'Original chain and pulley hoist in the roof');
+      }
+      await store.put('units', id, d);
+    }
+    done['2026-10-mill-room-names'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: Mill Rooms named (Miller\'s Room, Loading Door, Trapdoor Room, Hoist Loft).');
+  }
 }
 
 async function ensureLandlord() {
