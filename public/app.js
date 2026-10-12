@@ -1033,5 +1033,14 @@ function installSheet() {
     ${steps}
     <footer><button class="btn" data-act="close">Close</button></footer>`);
 }
-ACT['get-app'] = () => installSheet();
+// One click installs where the browser allows it (Chrome, Edge, Android); elsewhere it shows the steps.
+ACT['get-app'] = async () => {
+  if (!installPrompt) return installSheet();
+  installPrompt.prompt();
+  const r = await installPrompt.userChoice;
+  installPrompt = null;
+  if (r.outcome === 'accepted') { toast('Installed. Find The Old Mill on your home screen or desktop.'); const b = $('#install-btn'); if (b) b.hidden = true; }
+};
+{ const b = $('#install-btn'); if (b) b.hidden = isInstalled(); }
+window.addEventListener('appinstalled', () => { const b = $('#install-btn'); if (b) b.hidden = true; });
 ACT['install-now'] = async () => { if (!installPrompt) return; installPrompt.prompt(); const r = await installPrompt.userChoice; installPrompt = null; closeModal(); if (r.outcome === 'accepted') toast('Installed. Find The Old Mill on your home screen or desktop.'); };
