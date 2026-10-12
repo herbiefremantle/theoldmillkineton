@@ -477,6 +477,13 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: first floor small room named Fodder.');
   }
+  if (!done['2026-10-hatch-windows']) {
+    const c = await store.get('units', '1c');
+    if (c && typeof c.description === 'string') await store.put('units', '1c', { ...strip(c), description: c.description.replace('windows on two sides', 'two windows along one wall') });
+    done['2026-10-hatch-windows'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: Hatch window wording.');
+  }
 }
 
 async function ensureLandlord() {
