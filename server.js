@@ -459,6 +459,15 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: Mill Rooms renamed Miller, Hatch, Hoist Loft.');
   }
+  if (!done['2026-10-winch']) {
+    const b = await store.get('units', '1b');
+    if (b && b.name === 'The Loading Door') await store.put('units', '1b', { ...strip(b), name: 'Winch', shortName: 'Winch', code: 'Winch' });
+    const c = await store.get('units', '1c');
+    if (c && Array.isArray(c.info)) await store.put('units', '1c', { ...strip(c), info: c.info.map(x => x.replace('with the Loading Door', 'with Winch')) });
+    done['2026-10-winch'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: first floor small room named Winch.');
+  }
 }
 
 async function ensureLandlord() {
