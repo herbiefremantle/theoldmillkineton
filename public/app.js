@@ -95,7 +95,7 @@ function fieldHTML(f) {
   const id = 'f-' + f.id, v = f.value ?? '';
   if (f.type === 'checkbox') return `<label class="check ${f.full ? 'full' : ''}"><input type="checkbox" id="${id}"${v ? ' checked' : ''}><span>${esc(f.label)}</span></label>`;
   let ctl;
-  if (f.type === 'textarea') ctl = `<textarea id="${id}" rows="${f.rows || 4}">${esc(v)}</textarea>`;
+  if (f.type === 'textarea') ctl = `<textarea id="${id}" rows="${f.rows || 4}"${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''}>${esc(v)}</textarea>`;
   else if (f.type === 'select') ctl = `<select id="${id}">${f.options.map(o => `<option value="${esc(o[0])}"${String(o[0]) === String(v) ? ' selected' : ''}>${esc(o[1])}</option>`).join('')}</select>`;
   else ctl = `<input id="${id}" type="${f.type || 'text'}" value="${esc(v)}"${f.step ? ` step="${f.step}"` : ''}${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''}>`;
   return `<label class="field ${f.full ? 'full' : ''}"><span>${esc(f.label)}${f.required ? ' *' : ''}</span>${ctl}${f.hint ? `<small>${esc(f.hint)}</small>` : ''}</label>`;
