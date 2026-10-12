@@ -292,18 +292,19 @@ function floorsPlan(u) {
     const rects = f.rooms.map(r => {
       const w = Number(r.w) * sc, d = Number(r.d) * sc, out = `<rect x="${x}" y="${pad}" width="${w}" height="${d}" fill="var(--accent-soft)" stroke="var(--ink)" stroke-width="4"></rect>
         <text x="${x + w / 2}" y="${pad + d / 2 - 6}" font-size="${Math.max(11, Math.min(15, w / 6))}" text-anchor="middle" fill="var(--ink)" font-weight="600">${esc(r.name)}</text>
-        <text x="${x + w / 2}" y="${pad + d / 2 + 12}" font-size="${Math.max(10, Math.min(13, w / 7))}" text-anchor="middle" fill="var(--muted)">${f1(r.w)} × ${f1(r.d)} m · ${roomArea(r)} m²</text>`;
+        <text x="${x + w / 2}" y="${pad + d / 2 + 12}" font-size="${Math.max(10, Math.min(13, w / 7))}" text-anchor="middle" fill="var(--muted)">${f1(r.w)} × ${f1(r.d)} m · ${roomArea(r)} m²</text>${r.note ? `
+        <text x="${x + w / 2}" y="${pad + d / 2 + 32}" font-size="${Math.max(10, Math.min(13, w / 7))}" text-anchor="middle" fill="var(--brass)" font-weight="700">${esc(r.note)}</text>` : ''}`;
       x += w + gap; return out;
     }).join('');
     return `<div class="fp"><p class="eyebrow" style="margin:4px 4px 6px">${esc(f.label)}</p><svg viewBox="0 0 ${VB} ${h + pad * 2}" role="img" aria-label="${esc(f.label)} plan: ${f.rooms.map(r => `${esc(r.name)} ${f1(r.w)} by ${f1(r.d)} metres`).join(', ')}">${rects}</svg></div>`;
   }).join('') + '<p class="muted" style="font-size:11px;text-align:right">Internal measurements · not to scale</p>';
 }
-const floorsToText = u => floorsOf(u).flatMap(f => f.rooms.map(r => `${f.label} | ${r.name} | ${r.w} | ${r.d}`)).join('\n');
+const floorsToText = u => floorsOf(u).flatMap(f => f.rooms.map(r => `${f.label} | ${r.name} | ${r.w} | ${r.d}${r.note ? ' | ' + r.note : ''}`)).join('\n');
 function textToFloors(t) {
   const floors = [];
-  t.split('\n').map(l => l.split('|').map(x => x.trim())).filter(p => p.length >= 4 && Number(p[2]) > 0 && Number(p[3]) > 0).forEach(([label, name, w, d]) => {
+  t.split('\n').map(l => l.split('|').map(x => x.trim())).filter(p => p.length >= 4 && Number(p[2]) > 0 && Number(p[3]) > 0).forEach(([label, name, w, d, note]) => {
     let f = floors.find(x => x.label === label); if (!f) floors.push(f = {label, rooms: []});
-    f.rooms.push({name, w: Number(w), d: Number(d)});
+    f.rooms.push(note ? {name, w: Number(w), d: Number(d), note} : {name, w: Number(w), d: Number(d)});
   });
   return floors;
 }
@@ -332,7 +333,7 @@ function viewUnit() {
         <section class="usec"><h2>Layout &amp; measurements</h2>
           <div class="fpwrap"${floorsOf(u).length ? ' style="grid-template-columns:1fr"' : ''}>${floorsOf(u).length ? `<div style="display:grid;gap:10px;min-width:0">${floorsPlan(u)}</div>` : floorPlan(u)}
             <table class="spec num"><tbody>
-              ${floorsOf(u).length ? `${floorsOf(u).map(f => f.rooms.map(r => `<tr><td class="muted">${esc(r.name)} <span style="font-size:12.5px">(${esc(f.label.toLowerCase())})</span></td><td>${r.w} × ${r.d} m (${roomArea(r)} m²)</td></tr>`).join('')).join('')}
+              ${floorsOf(u).length ? `${floorsOf(u).map(f => f.rooms.map(r => `<tr><td class="muted">${esc(r.name)} <span style="font-size:12.5px">(${esc(f.label.toLowerCase())})</span></td><td>${r.w} × ${r.d} m (${roomArea(r)} m²)${r.note ? `<br><span style="color:var(--brass);font-size:13px">${esc(r.note)}</span>` : ''}</td></tr>`).join('')).join('')}
               <tr><td class="muted">Total floor area</td><td>${Math.round(floorsOf(u).flatMap(f => f.rooms).reduce((s, r) => s + roomArea(r), 0) * 10) / 10} m²</td></tr>` : `<tr><td class="muted">Floor area</td><td>${sizeText(u)}</td></tr>
               <tr><td class="muted">Width × depth</td><td>${u.widthM && u.depthM ? `${u.widthM} m × ${u.depthM} m` : 'To follow'}</td></tr>`}
               <tr><td class="muted">Ceiling height</td><td>${u.ceilingM ? u.ceilingM + ' m' : 'To follow'}</td></tr>
@@ -709,7 +710,7 @@ function unitForm(u) {
       {id:'doorHeightM', label:'Door height (m)', type:'number', step:'0.01', value:u.doorHeightM},
       {id:'description', label:'Description', type:'textarea', full:true, rows:3, value:u.description},
       {id:'info', label:'Additional information (one per line)', type:'textarea', full:true, rows:3, value:(u.info || []).join('\n'), placeholder:'e.g. Three-phase power\nParking for one van'},
-      {id:'floorsText', label:'Floors and rooms (one per line: floor | room | width m | depth m)', type:'textarea', full:true, rows:4, value:floorsToText(u), placeholder:'Ground floor | Workshop | 6 | 5\nFirst floor | Office | 4 | 3', hint:'For spaces over more than one floor. Leave empty to use the single width and depth above'},
+      {id:'floorsText', label:'Floors and rooms (one per line: floor | room | width m | depth m | optional note)', type:'textarea', full:true, rows:4, value:floorsToText(u), placeholder:'Ground floor | Workshop | 6 | 5\nFirst floor | Office | 4 | 3', hint:'For spaces over more than one floor. Leave empty to use the single width and depth above'},
       {id:'photos', label:'Photos (one per line: caption | image file)', type:'textarea', full:true, rows:4, value:photoList(u).map(p => p.src ? `${p.caption} | ${p.src}` : p.caption).join('\n'), hint:'A line with only a caption shows a placeholder until a photo is added'}
     ],
     submit: 'Save',

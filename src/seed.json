@@ -161,6 +161,7 @@
    "serviceChargeAmount": null,
    "info": [
     "Two floors let as one: storage below, two rooms above",
+    "The storage floor has a low ceiling, about 5 ft (1.5 m)",
     "Bills included: internet, electricity and water",
     "Shared entrance hall with a small kitchen and toilets"
    ],
@@ -177,7 +178,8 @@
       {
        "name": "Storage",
        "w": 12,
-       "d": 6
+       "d": 6,
+       "note": "Low ceiling, about 5 ft (1.5 m)"
       }
      ]
     },

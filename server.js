@@ -333,6 +333,18 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: Unit 1D shown as two floors.');
   }
+  if (!done['2026-10-1d-low-ceiling']) {
+    const u = await store.get('units', '1d');
+    const want = seed.units.find(x => x.id === '1d');
+    if (u && Array.isArray(u.floors)) {
+      const floors = u.floors.map(f => ({ ...f, rooms: f.rooms.map(r => (r.name === 'Storage' && !r.note ? { ...r, note: 'Low ceiling, about 5 ft (1.5 m)' } : r)) }));
+      const info = Array.isArray(u.info) && !u.info.some(x => /low ceiling/i.test(x)) ? want.info : u.info;
+      await store.put('units', '1d', { ...strip(u), floors, info });
+    }
+    done['2026-10-1d-low-ceiling'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: 1D storage floor low ceiling note.');
+  }
 }
 
 async function ensureLandlord() {
