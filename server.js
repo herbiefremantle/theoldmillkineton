@@ -468,6 +468,15 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: first floor small room named Winch.');
   }
+  if (!done['2026-10-fodder-door-room']) {
+    const b = await store.get('units', '1b');
+    if (b && b.name === 'Winch') await store.put('units', '1b', { ...strip(b), name: 'Fodder', shortName: 'Fodder', code: 'Fodder' });
+    const c = await store.get('units', '1c');
+    if (c && Array.isArray(c.info)) await store.put('units', '1c', { ...strip(c), info: c.info.map(x => x.replace('with Winch', 'with Fodder')) });
+    done['2026-10-fodder-door-room'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: first floor small room named Fodder.');
+  }
 }
 
 async function ensureLandlord() {
