@@ -315,7 +315,11 @@ async function main() {
     cookie: { httpOnly: true, sameSite: 'lax', secure: PROD, maxAge: 30 * 864e5 }
   }));
   app.use('/api', routes());
-  app.use(express.static(path.join(__dirname, 'public'), { maxAge: PROD ? '1h' : 0, index: 'index.html' }));
+  // Pages, scripts and styles are re-checked on every visit so updates show at once; photos can be cached for a day.
+  app.use(express.static(path.join(__dirname, 'public'), {
+    index: 'index.html',
+    setHeaders: (res, file) => res.setHeader('Cache-Control', /\/img\//.test(file) && PROD ? 'public, max-age=86400' : 'no-cache')
+  }));
   app.get(['/invite', '/'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
   app.use((err, req, res, next) => {
     console.error(err);
