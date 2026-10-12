@@ -37,6 +37,18 @@ const billsText = u => u.inclusive ? 'Internet, electricity & water included' : 
 const LP_DEFAULT = {enabled: true, mode: 'percent', nearbyPct: 10, furtherPct: 20, roundTo: 5, nearbyExtra: 50, furtherExtra: 100, nearbyMiles: 6, nearbyPlaces: 'Tysoe, Wellesbourne and other villages within 6 miles', furtherPlaces: 'Leamington, Stratford, Coventry and beyond'};
 const localPricing = () => Object.assign({}, LP_DEFAULT, prop().localPricing || {});
 const TIERS = {kineton: 'Kineton businesses', nearby: 'Within 6 miles', further: 'Further afield'};
+// Which area's prices visitors are looking at (remembered on their device).
+let priceTier = 'kineton';
+try { const t = localStorage.getItem('oldmill.priceTier'); if (['kineton', 'nearby', 'further'].includes(t)) priceTier = t; } catch (e) {}
+const RATE_LABEL = {kineton: 'Kineton business rate', nearby: 'Within 6 miles rate', further: 'Standard rate'};
+function priceBar() {
+  if (!localPricing().enabled) return '';
+  const b = (k, l) => `<button type="button" data-act="tier" data-t="${k}" aria-pressed="${priceTier === k}">${l}</button>`;
+  return `<div class="pricebar wrap"><div class="row" style="gap:10px;justify-content:space-between">
+    <span style="font-size:14px"><b>Show prices for a business based in:</b> <span class="muted">Kineton businesses get our best rates</span></span>
+    <div class="filters" role="group" aria-label="Show prices for">${b('kineton', 'Kineton')}${b('nearby', `Within ${esc(localPricing().nearbyMiles)} miles`)}${b('further', 'Further afield')}</div>
+  </div></div>`;
+}
 const usesLocal = u => localPricing().enabled && u.localPricing !== false && u.rent;
 // A space can set its own step-ups (e.g. the small rooms); otherwise the site-wide amounts apply.
 const tierExtra = (tier, u) => {
@@ -65,7 +77,7 @@ const reduced = u => u.status !== 'let' && u.wasRent && u.rent && Number(u.wasRe
 const scLine = u => u.serviceCharge === 'included' ? 'Service charge included'
   : u.serviceCharge === 'extra' ? (u.serviceChargeAmount ? `+ ${gbp(u.serviceChargeAmount)} service charge (Total ${gbp(totalRent(u))})` : '+ service charge (to be confirmed)')
   : 'No service charge';
-const totalRent = u => u.rent ? Number(u.rent) + (u.serviceCharge === 'extra' && u.serviceChargeAmount ? Number(u.serviceChargeAmount) : 0) : null;
+const totalRent = u => u.rent ? Number(priceFor(u, priceTier)) + (u.serviceCharge === 'extra' && u.serviceChargeAmount ? Number(u.serviceChargeAmount) : 0) : null;
 const PAY = {dd: 'Direct Debit', bank: 'Bank transfer'};
 const payText = () => { const m = (prop().paymentMethods || ['dd', 'bank']).map(k => PAY[k]).filter(Boolean); return m.length ? 'Monthly by ' + m.join(' or ').replace('Bank transfer', 'bank transfer') : 'Monthly'; };
 const photoList = u => (u.photos && u.photos.length ? u.photos : ['Photo']).map(p => typeof p === 'string' ? {caption: p, src: ''} : {caption: p.caption || '', src: p.src || ''});
@@ -264,14 +276,14 @@ function unitCard(u) {
   const btn = u.status === 'available'
     ? `<button class="btn primary" data-act="enquire" data-unit="${esc(u.id)}">Request this space</button>`
     : `<button class="btn" data-act="enquire" data-unit="${esc(u.id)}" data-wait="1">Notify me when available</button>`;
-  const priceHTML = u.status === 'let' ? '<span class="muted">Currently let</span>' : `<span><b>${u.rent ? gbp(u.rent) : 'Rent on request'}</b>${u.rent ? ' / month' : ''}${usesLocal(u) ? ' <span class="pill s-paid" style="margin-left:4px">Kineton rate</span>' : ''}</span>`;
-  const tiersHTML = u.status !== 'let' && usesLocal(u) ? `<div class="muted num" style="font-size:13px">Within 6 miles ${gbp(priceFor(u, 'nearby'))} · Further afield ${gbp(priceFor(u, 'further'))}</div>` : '';
+  const priceHTML = u.status === 'let' ? '<span class="muted">Currently let</span>' : `<span><b>${u.rent ? gbp(priceFor(u, priceTier)) : 'Rent on request'}</b>${u.rent ? ' / month' : ''}${usesLocal(u) ? ` <span class="pill s-${priceTier === 'kineton' ? 'paid' : 'let'}" style="margin-left:4px">${RATE_LABEL[priceTier]}</span>` : ''}</span>`;
+  const tiersHTML = '';
   return `<article class="ucard">
     ${ph(photoList(u)[0], '', '')}
     <div class="ucard-top"><div><div class="ucode"${u.shortName ? ' style="font-size:30px;line-height:1"' : ''}>${esc(u.shortName || u.code)}</div><div class="utype">${esc(u.type)}</div></div><span class="pill s-${esc(u.status)}">${STATUS[u.status] || esc(u.status)}</span></div>
     <div class="facts num"><span><b>${u.size ? Number(u.size).toLocaleString('en-GB') + ' sq ft' : 'Size on request'}</b></span>${priceHTML}</div>
     ${tiersHTML}
-    ${reduced(u) ? `<div class="row" style="gap:8px;font-size:13.5px"><span class="pill s-soon">Reduced</span><span>Rent was <s>${gbp(u.wasRent)}</s>, now <b>${gbp(u.rent)}</b></span></div>` : ''}
+    ${reduced(u) ? `<div class="row" style="gap:8px;font-size:13.5px"><span class="pill s-soon">Reduced</span><span>Was <s>${gbp(priceFor({...u, rent: u.wasRent}, priceTier))}</s>, now <b>${gbp(priceFor(u, priceTier))}</b></span></div>` : ''}
     <div class="muted num" style="font-size:13.5px">${u.status === 'let' ? (u.serviceCharge === 'included' ? 'Service charge included' : u.serviceCharge === 'extra' ? 'Service charge extra' : 'No service charge') : esc(scLine(u))} · ${u.inclusive ? 'Bills included' : 'Bills paid by tenant'}</div>
     <div class="muted" style="font-size:13px">Deposit ${depositText(u)} · ${TERMS[termOf(u)].short}</div>
     ${u.status === 'soon' && u.availableFrom ? `<div style="font-size:13.5px">Available from <b>${fmtDate(u.availableFrom)}</b></div>` : ''}
@@ -345,7 +357,7 @@ function viewUnit() {
   const cta = let_ || u.status === 'soon'
     ? `<button class="btn primary" style="justify-content:center" data-act="enquire" data-unit="${esc(u.id)}" data-wait="1">Notify me when available</button>`
     : `<button class="btn primary" style="justify-content:center" data-act="enquire" data-unit="${esc(u.id)}">Request this space</button>`;
-  return `<div class="upage wrap">
+  return `${priceBar()}<div class="upage wrap">
     <button class="back" data-act="go-site">← All spaces</button>
     <div class="uhead"><div><p class="eyebrow">${esc(u.type)} · ${esc(P.name)}</p><h1 class="sign" style="font-size:clamp(48px,7vw,84px)">${esc(u.name)}</h1></div>
       <span class="pill s-${esc(u.status)}" style="font-size:14px">${STATUS[u.status]}${u.status === 'soon' && u.availableFrom ? ' · from ' + fmtDate(u.availableFrom) : ''}</span></div>
@@ -374,7 +386,7 @@ function viewUnit() {
             <tr><td class="muted">Bills</td><td>${billsText(u)}</td></tr>
             <tr><td class="muted">Service charge</td><td>${scText(u, true)}</td></tr>
             <tr><td class="muted">Business rates</td><td>${ratesIncluded(u) ? 'No need to register' : 'Tenant registers with the council. Up to 100% Small Business Rate Relief if you qualify'}</td></tr>
-            <tr><td class="muted">Deposit</td><td>${depositText(u)}${u.rent && u.status !== 'let' ? ` <span class="muted" style="font-size:13px">(${gbp(depositMonths(u) * Number(u.rent))} at the Kineton rate)</span>` : ''}</td></tr>
+            <tr><td class="muted">Deposit</td><td>${depositText(u)}${u.rent && u.status !== 'let' ? ` <span class="muted" style="font-size:13px">(${gbp(depositMonths(u) * Number(priceFor(u, priceTier)))}${usesLocal(u) ? ' at the ' + RATE_LABEL[priceTier].toLowerCase().replace('kineton', 'Kineton') : ''})</span>` : ''}</td></tr>
             <tr><td class="muted">Terms</td><td>${esc(TERMS[termOf(u)].long)}</td></tr>
             <tr><td class="muted">Payment</td><td>${esc(payText())}</td></tr>
           </tbody></table></section>
@@ -383,7 +395,7 @@ function viewUnit() {
       <aside class="panel aside">
         <span class="eyebrow">${let_ ? 'Availability' : onePrice(u) ? 'Price' : 'Rent'}</span>
         ${let_ ? `<div class="price">Let</div><p class="muted">This space is let at the moment. Join the waitlist and we'll message you when it becomes available.</p>`
-          : `${reduced(u) ? `<div class="row" style="gap:8px"><span class="pill s-soon">Reduced</span><span class="muted">Rent was <s>${gbp(u.wasRent)}</s></span></div>` : ''}<div><span class="price">${u.rent ? gbp(u.rent) : 'On request'}</span>${u.rent ? `<span class="muted"> / month${onePrice(u) ? '' : ' rent'}</span>` : ''}</div>${usesLocal(u) ? `<div class="list num" style="font-size:14px">${Object.keys(TIERS).map(k => `<div><span>${TIERS[k]}</span><b>${gbp(priceFor(u, k))}</b></div>`).join('')}</div><p class="muted" style="font-size:12.5px">Prices are per month and depend on where your business is based. <button type="button" class="linkish" data-act="scroll-local">How local rates work</button></p>` : ''}<p class="muted num" style="font-size:13.5px">${u.inclusive ? (onePrice(u) ? 'Everything included: bills and service charge' : 'Everything included: rent, service charge and bills') : esc(scLine(u))}</p>`}
+          : `${reduced(u) ? `<div class="row" style="gap:8px"><span class="pill s-soon">Reduced</span><span class="muted">Was <s>${gbp(priceFor({...u, rent: u.wasRent}, priceTier))}</s></span></div>` : ''}<div><span class="price">${u.rent ? gbp(priceFor(u, priceTier)) : 'On request'}</span>${u.rent ? `<span class="muted"> / month${onePrice(u) ? '' : ' rent'}</span>` : ''}</div>${usesLocal(u) ? `<div class="row" style="gap:8px"><span class="pill s-${priceTier === 'kineton' ? 'paid' : 'let'}">${RATE_LABEL[priceTier]}</span></div><p class="muted" style="font-size:12.5px">Prices depend on where your business is based. Change it at the top of the page. <button type="button" class="linkish" data-act="scroll-local">How local rates work</button></p>` : ''}<p class="muted num" style="font-size:13.5px">${u.inclusive ? (onePrice(u) ? 'Everything included: bills and service charge' : 'Everything included: rent, service charge and bills') : esc(scLine(u))}</p>`}
         <div class="list" style="font-size:14px">
           <div><span class="muted">Size</span><b>${u.size ? Number(u.size).toLocaleString('en-GB') + ' sq ft' : '—'}</b></div>
           <div><span class="muted">Service charge</span><b>${u.serviceCharge === 'included' ? 'Included' : u.serviceCharge === 'extra' ? (u.serviceChargeAmount && !let_ ? gbp(u.serviceChargeAmount) + ' (Total ' + gbp(totalRent(u)) + ')' : let_ ? 'Extra' : 'To be confirmed') : 'None'}</b></div>
@@ -405,6 +417,7 @@ function viewSite() {
   const shown = U.filter(u => siteFilter === 'all' || (siteFilter === 'available' && u.status !== 'let') || (siteFilter === 'unit1' && u.group === 'unit1') || (siteFilter === 'main' && u.group !== 'unit1'));
   const f = (k, l) => `<button type="button" data-act="filter" data-f="${k}" aria-pressed="${siteFilter === k}">${l}</button>`;
   return `
+  ${priceBar()}
   <section class="hero wrap">
     <div class="hero-copy">
       <p class="eyebrow">Rooms, workshops &amp; storage to let${P.address ? ' · ' + esc(P.address) : ''}</p>
@@ -462,6 +475,7 @@ function viewSite() {
   <section class="section wrap" id="spaces">
     <div class="section-head"><h2 class="h2">The spaces</h2>
       <div class="filters">${f('all', 'All')}${f('available', 'Available or soon')}${f('unit1', 'Mill rooms')}${f('main', 'Units 2–6, Stable Block, rooms & garages')}</div></div>
+    ${localPricing().enabled ? `<div class="row" style="gap:10px;margin:-8px 0 16px"><span class="muted" style="font-size:13.5px">Prices for a business based in:</span><div class="filters" role="group" aria-label="Show prices for">${[['kineton', 'Kineton'], ['nearby', `Within ${esc(localPricing().nearbyMiles)} miles`], ['further', 'Further afield']].map(([k, l]) => `<button type="button" data-act="tier" data-t="${k}" aria-pressed="${priceTier === k}">${l}</button>`).join('')}</div></div>` : ''}
     ${shown.length ? `<div class="cards">${shown.map(unitCard).join('')}</div>` : '<div class="empty">Nothing matches that filter right now. Join the waitlist and we will tell you when something frees up.</div>'}
   </section>
 
@@ -521,7 +535,7 @@ function enquireForm(unitId, wait) {
       {id:'email', label:'Email', type:'email', required:true}, {id:'phone', label:'Phone', type:'tel'},
       {id:'interest', label:'Space', type:'select', options: interestOptions(), value: unitId || 'any'},
       ...(localPricing().enabled ? [
-        {id:'based', label:'Where is your business based?', type:'select', options: [['kineton', 'Kineton'], ['nearby', `Within ${localPricing().nearbyMiles} miles (e.g. Tysoe, Wellesbourne)`], ['further', 'Further afield (e.g. Leamington, Stratford)']], value: 'kineton'},
+        {id:'based', label:'Where is your business based?', type:'select', options: [['kineton', 'Kineton'], ['nearby', `Within ${localPricing().nearbyMiles} miles (e.g. Tysoe, Wellesbourne)`], ['further', 'Further afield (e.g. Leamington, Stratford)']], value: priceTier},
         {id:'postcode', label:'Business postcode', placeholder:'e.g. CV35 0XX'}] : []),
       {id:'start', label:'Ideal start date', type:'date'},
       {id:'message', label:'Please tell us about your business and how you plan to use the space', type:'textarea', full:true, rows:4, placeholder:'e.g. what your business does, what you would use the space for, how many people, opening hours, any access or storage needs'},
@@ -1142,6 +1156,7 @@ const ACT = {
   'wifi-send': () => messageForm(),
   'prop-edit': () => propForm(),
   'lp-edit': () => lpForm(),
+  tier: d => { priceTier = d.t; try { localStorage.setItem('oldmill.priceTier', priceTier); } catch (e) {} render(); },
   'scroll-local': () => { setView('site'); setTimeout(() => document.getElementById('local-rates')?.scrollIntoView(), 50); },
   'out-copy': d => { const o = S.outbox.find(x => x.id === d.id); if (o) copyText(`To: ${o.to}\nSubject: ${o.subject}\n\n${o.body}`); },
   'out-sent': async d => { const o = S.outbox.find(x => x.id === d.id); await put('outbox', {...o, status: 'sent', sentAt: new Date().toISOString()}); const e = S.enquiries.find(x => x.id === o.enquiryId); if (e && e.status === 'waitlist') await put('enquiries', {...e, status: 'contacted'}); },

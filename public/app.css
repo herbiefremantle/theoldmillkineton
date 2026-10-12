@@ -230,3 +230,5 @@ pre.draft{white-space:pre-wrap;font:13px/1.5 var(--f-mono);background:var(--surf
 a{color:var(--accent)}
 #included .incl{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
 #included .incl b{font-size:17px}
+.pricebar{padding-block:10px;border-bottom:1px solid var(--line)}
+.pricebar .filters button{font-weight:600}
