@@ -174,7 +174,7 @@ function fallbackCopy(text) {
 const PLAN = {
   '4': {pts:'32,40 282,40 282,177 90,177', lx:150, ly:100},
   '3': {pts:'90,177 268,177 268,283 135,283', lx:168, ly:228},
-  '1a': {pts:'135,283 232,283 232,399 178,399', lx:178, ly:335, small:true},
+  '1a': {pts:'135,283 232,283 232,399 178,399', lx:162, ly:335, small:true},
   '2': {pts:'313,330 400,330 400,399 313,399', lx:326, ly:362, small:true},
   '5': {pts:'292,95 468,95 468,283 414,283 414,215 292,215', lx:350, ly:160},
   '6': {pts:'400,330 588,330 588,399 400,399', lx:470, ly:362, small:true},
@@ -217,10 +217,10 @@ function planSVG(list) {
     ${arrow(494, 432, 404)}<text x="504" y="428" font-size="12" fill="var(--ink)" font-weight="700">Unit 6</text>
     ${arrow(643, 432, 400)}<text x="653" y="428" font-size="12" fill="var(--ink)" font-weight="700">Yard gates</text>
     ${arrow(643, 236, 186)}<text x="643" y="254" font-size="11" fill="var(--ink)" font-weight="700" text-anchor="middle">Way in</text>
-    <text x="815" y="22" font-size="13" fill="var(--muted)" font-weight="800" letter-spacing="1.5">MILL ROOMS · UPPER FLOORS</text>
+    <text x="815" y="22" font-size="13" fill="var(--muted)" font-weight="800" letter-spacing="1">MILL ROOMS · UPSTAIRS</text>
     <text x="815" y="44" font-size="12" fill="var(--muted)" font-weight="600">Second floor (with storage)</text>
     <text x="815" y="144" font-size="12" fill="var(--muted)" font-weight="600">First floor</text>
-    <text x="815" y="244" font-size="12" fill="var(--muted)" font-weight="600">Ground floor: 1A, on the plan</text>
+    <text x="815" y="244" font-size="12" fill="var(--muted)" font-weight="600">Ground floor: MR-1, on the plan</text>
     <line x1="815" y1="286" x2="840" y2="286" stroke="var(--brass)" stroke-width="7" stroke-linecap="round"></line>
     <text x="850" y="290" font-size="12" fill="var(--ink)" font-weight="600">Loading doors to Mill Lane</text>
     <path d="M827 324 L827 304 M820 313 L827 304 L834 313" stroke="var(--ink)" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
@@ -449,7 +449,7 @@ function viewSite() {
       <p>The prices shown on each space are our Kineton rates. We'd love The Old Mill to be full of village businesses, with people who can walk or cycle to work and keep trade local.</p>
       <p>Businesses from nearby villages and further afield are just as welcome. Each space shows their price too.</p>
     </div>
-    <figure class="hero-photo"><img src="img/1st-floor-large-1.jpg" alt="A bright first floor room in the mill building, with timber beams and two windows" loading="lazy" style="aspect-ratio:3/2;object-position:50% 50%"><figcaption>First floor room, Unit 1C</figcaption></figure>
+    <figure class="hero-photo"><img src="img/1st-floor-large-1.jpg" alt="A bright first floor room in the mill building, with timber beams and two windows" loading="lazy" style="aspect-ratio:3/2;object-position:50% 50%"><figcaption>First floor room, MR-3</figcaption></figure>
     </div>
   </section>` : ''}
 
@@ -482,7 +482,7 @@ function viewSite() {
     <div class="grid2">
       <section class="panel"><h3>All-inclusive rooms</h3>
         <p class="muted" style="font-size:13.5px">Mill Rooms, Unit 2, Rooms 5A and 5B</p>
-        <ul class="ticks"><li>Simple licence agreement: 3-month minimum, then monthly</li><li>1 month's notice either side</li><li>Deposit of 1 month (2 months for Mill Room 1D)</li><li>One monthly payment covers bills and service charge</li></ul></section>
+        <ul class="ticks"><li>Simple licence agreement: 3-month minimum, then monthly</li><li>1 month's notice either side</li><li>Deposit of 1 month (2 months for MR-4)</li><li>One monthly payment covers bills and service charge</li></ul></section>
       <section class="panel"><h3>Workshops, warehouse and units</h3>
         <p class="muted" style="font-size:13.5px">Units 3 to 6, the Stable Block and the garages</p>
         <ul class="ticks"><li>Lease with a 12-month minimum term (1 to 3 years available)</li><li>3 months' notice after the first 12 months</li><li>Deposit of 2 months' rent</li><li>Rent plus a monthly service charge. You pay your own electricity and business rates</li></ul></section>
@@ -746,7 +746,7 @@ function unitForm(u) {
   openForm({
     title: isNew ? 'Add a space' : 'Edit ' + u.name,
     fields: [
-      {id:'code', label:'Short code (as on the plan)', value:u.code, required:true, placeholder:'e.g. 1C or 3'},
+      {id:'code', label:'Short code (as on the plan)', value:u.code, required:true, placeholder:'e.g. MR-3 or 3'},
       {id:'group', label:'Building', type:'select', options:[['unit1', 'Mill Rooms'], ['main', 'Units 2–6, Stable Block, rooms and garages']], value:u.group},
       {id:'type', label:'Type', value:u.type, required:true},
       {id:'size', label:'Size (sq ft)', type:'number', value:u.size},

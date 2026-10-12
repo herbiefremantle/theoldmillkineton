@@ -396,6 +396,20 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: Unit 7 renamed The Stable Block.');
   }
+  if (!done['2026-10-mr-codes']) {
+    const MR = { '1a': ['MR-1', 'Mill Room 1'], '1b': ['MR-2', 'Mill Room 2'], '1c': ['MR-3', 'Mill Room 3'], '1d': ['MR-4', 'Mill Room 4'] };
+    for (const [id, [code, name]] of Object.entries(MR)) {
+      const u = await store.get('units', id);
+      if (!u) continue;
+      const d = strip(u);
+      if (/^1[a-d]$/i.test(d.code || '')) { d.code = code; if (d.name === `Mill Room ${id.toUpperCase()}` || d.name === `Unit ${id.toUpperCase()}`) d.name = name; }
+      if (Array.isArray(d.info)) d.info = d.info.map(x => x.replace('with Mill Room 1B', 'with MR-2').replace('with Mill Room 1C', 'with MR-3'));
+      await store.put('units', id, d);
+    }
+    done['2026-10-mr-codes'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: Mill Rooms numbered MR-1 to MR-4.');
+  }
 }
 
 async function ensureLandlord() {
