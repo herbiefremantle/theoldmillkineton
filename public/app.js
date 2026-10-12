@@ -405,7 +405,7 @@ function enquireForm(unitId, wait) {
       {id:'email', label:'Email', type:'email', required:true}, {id:'phone', label:'Phone', type:'tel'},
       {id:'interest', label:'Space', type:'select', options: interestOptions(), value: unitId || 'any'},
       {id:'start', label:'Ideal start date', type:'date'},
-      {id:'message', label:'Anything we should know?', type:'textarea', full:true, rows:3, placeholder:'What the space is for, how many people, access needs'},
+      {id:'message', label:'Please tell us about your business and how you plan to use the space', type:'textarea', full:true, rows:4, placeholder:'e.g. what your business does, what you would use the space for, how many people, opening hours, any access or storage needs'},
       {id:'notify', label:'Message me when a matching space becomes available', type:'checkbox', value:true, full:true}
     ],
     submit: wait ? 'Join waitlist' : 'Send request',
