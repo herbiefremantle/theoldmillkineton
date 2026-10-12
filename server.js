@@ -356,6 +356,25 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: local rates by percentage (+10% / +20%).');
   }
+  if (!done['2026-10-mill-rooms']) {
+    for (const id of ['1a', '1b', '1c', '1d']) {
+      const u = await store.get('units', id);
+      if (!u) continue;
+      const d = strip(u);
+      if (d.name === `Unit ${d.code}`) d.name = `Mill Room ${d.code}`;
+      if (Array.isArray(d.info)) d.info = d.info.map(x => x.replace(/with Unit 1([BC])/, 'with Mill Room 1$1'));
+      await store.put('units', id, d);
+    }
+    const p = await store.get('site', 'property');
+    if (p && typeof p.description === 'string') {
+      const d = strip(p);
+      d.description = d.description.replace('The four rooms in the mill building (Unit 1), Unit 2 and the small rooms 5A and 5B come with everything included', 'The four Mill Rooms (each let on its own), Unit 2 and the small rooms 5A and 5B come with everything included');
+      await store.put('site', 'property', d);
+    }
+    done['2026-10-mill-rooms'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: Unit 1 renamed to the Mill Rooms.');
+  }
 }
 
 async function ensureLandlord() {

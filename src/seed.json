@@ -3,7 +3,7 @@
   "name": "The Old Mill",
   "tagline": "Rooms, workshops and storage to let in Kineton. Kineton businesses from £250 a month, everything included.",
   "address": "Mill Lane, Kineton",
-  "description": "The Old Mill in Kineton has rooms, workshops and storage to let. The four rooms in the mill building (Unit 1), Unit 2 and the small rooms 5A and 5B come with everything included in one monthly price: internet, electricity, water and the service charge. They suit any small business, from treatment rooms and craft studios to desk work. The workshop and warehouse units suit businesses that need more room.\n\nViewings are by appointment. If nothing suits you today, join the waitlist and we will message you as soon as a space comes free.",
+  "description": "The Old Mill in Kineton has rooms, workshops and storage to let. The four Mill Rooms (each let on its own), Unit 2 and the small rooms 5A and 5B come with everything included in one monthly price: internet, electricity, water and the service charge. They suit any small business, from treatment rooms and craft studios to desk work. The workshop and warehouse units suit businesses that need more room.\n\nViewings are by appointment. If nothing suits you today, join the waitlist and we will message you as soon as a space comes free.",
   "features": [
    "Kineton businesses from £250 a month, everything included, for any kind of small business",
    "Workshop and warehouse units with roller and double door access",
@@ -24,7 +24,7 @@
   {
    "id": "1a",
    "code": "1A",
-   "name": "Unit 1A",
+   "name": "Mill Room 1A",
    "group": "unit1",
    "type": "Ground floor room",
    "size": 137,
@@ -57,7 +57,7 @@
   {
    "id": "1b",
    "code": "1B",
-   "name": "Unit 1B",
+   "name": "Mill Room 1B",
    "group": "unit1",
    "type": "First floor room (small)",
    "size": 154,
@@ -76,7 +76,7 @@
    "serviceCharge": "included",
    "serviceChargeAmount": null,
    "info": [
-    "Can be let together with Unit 1C as the whole first floor for £675 a month",
+    "Can be let together with Mill Room 1C as the whole first floor for £675 a month",
     "Bills included: internet, electricity and water",
     "Shared entrance hall with a small kitchen and toilets"
    ],
@@ -99,7 +99,7 @@
   {
    "id": "1c",
    "code": "1C",
-   "name": "Unit 1C",
+   "name": "Mill Room 1C",
    "group": "unit1",
    "type": "First floor room (large)",
    "size": 281,
@@ -118,7 +118,7 @@
    "serviceCharge": "included",
    "serviceChargeAmount": null,
    "info": [
-    "Can be let together with Unit 1B as the whole first floor for £675 a month",
+    "Can be let together with Mill Room 1B as the whole first floor for £675 a month",
     "Bills included: internet, electricity and water",
     "Shared entrance hall with a small kitchen and toilets"
    ],
@@ -141,7 +141,7 @@
   {
    "id": "1d",
    "code": "1D",
-   "name": "Unit 1D",
+   "name": "Mill Room 1D",
    "group": "unit1",
    "type": "Top two floors (let as one)",
    "size": 1550,

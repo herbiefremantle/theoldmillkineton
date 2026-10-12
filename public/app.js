@@ -27,7 +27,7 @@ const activeTenants = () => S.tenants.filter(t => t.status !== 'former');
 const tenantInUnit = uId => activeTenants().find(t => t.unitId === uId);
 const isOverdue = i => i.status === 'due' && i.due && i.due < today();
 const invState = i => i.status === 'paid' ? 'paid' : isOverdue(i) ? 'overdue' : 'due';
-const interestLabel = v => v === 'any' ? 'Any space' : v === 'unit1' ? 'Any Unit 1 workspace' : v === 'large' ? 'Any of Units 2–7' : (unitById(v)?.name || v);
+const interestLabel = v => v === 'any' ? 'Any space' : v === 'unit1' ? 'Any Mill Room' : v === 'large' ? 'Any of Units 2–7' : (unitById(v)?.name || v);
 const matches = (e, u) => e.interest === 'any' || e.interest === u.id || (e.interest === 'unit1' && u.group === 'unit1') || (e.interest === 'large' && u.group !== 'unit1');
 const m2 = sqft => Math.round(sqft * 0.092903 * 10) / 10;
 const sizeText = u => u.size ? `${Number(u.size).toLocaleString('en-GB')} sq ft (${m2(u.size)} m²)` : (u.widthM && u.depthM ? `${Math.round(u.widthM * u.depthM * 10) / 10} m²` : 'On request');
@@ -212,7 +212,7 @@ function planSVG(list) {
     ${arrow(494, 432, 404)}<text x="504" y="428" font-size="12" fill="var(--ink)" font-weight="700">Unit 6</text>
     ${arrow(643, 432, 400)}<text x="653" y="428" font-size="12" fill="var(--ink)" font-weight="700">Yard gates</text>
     ${arrow(643, 236, 186)}<text x="643" y="254" font-size="11" fill="var(--ink)" font-weight="700" text-anchor="middle">Unit 7 way in</text>
-    <text x="815" y="22" font-size="13" fill="var(--muted)" font-weight="800" letter-spacing="1.5">UNIT 1 · UPPER FLOORS</text>
+    <text x="815" y="22" font-size="13" fill="var(--muted)" font-weight="800" letter-spacing="1.5">MILL ROOMS · UPPER FLOORS</text>
     <text x="815" y="44" font-size="12" fill="var(--muted)" font-weight="600">Second floor (with storage)</text>
     <text x="815" y="144" font-size="12" fill="var(--muted)" font-weight="600">First floor</text>
     <text x="815" y="244" font-size="12" fill="var(--muted)" font-weight="600">Ground floor: 1A, on the plan</text>
@@ -355,7 +355,7 @@ function viewUnit() {
               <tr><td class="muted">Ceiling height</td><td>${u.ceilingM ? u.ceilingM + ' m' : 'To follow'}</td></tr>
               <tr><td class="muted">Entrance</td><td>${esc(u.access || 'To follow')}</td></tr>
               <tr><td class="muted">Doors</td><td>${esc(u.doorType || 'Door')}${u.doorWidthM ? ` ${u.doorWidthM} × ${u.doorHeightM || '?'} m` : ''}</td></tr>
-              <tr><td class="muted">Building</td><td>${u.group === 'unit1' ? 'Inside Unit 1' : 'Self-contained'}</td></tr>
+              <tr><td class="muted">Building</td><td>${u.group === 'unit1' ? 'One of the Mill Rooms, in the mill building' : 'Self-contained'}</td></tr>
             </tbody></table></div>
         </section>
         <section class="usec"><h2>What's included</h2>
@@ -429,7 +429,7 @@ function viewSite() {
   <section class="section wrap" id="siteplan">
     <div class="two" style="align-items:center">
       <div class="prose"><p class="eyebrow">Site plan</p><h2 class="h2">Find your space</h2>
-        <p>Units 1 to 5 are reached through the main entrance on Mill Lane, into a shared entrance hall with a small kitchen and toilets. Unit 1 is four rooms over three floors, up the stairs from the hall. Unit 6 has its own entrance at the front. Unit 7 is reached through the metal gates into the yard. Units 3 and 4 also have loading doors onto Mill Lane.</p><p>There are also two small rooms, 5A and 5B, off the hall, which work for storage or anything else your business needs, and two garages, G1 and G2.</p><p>Select any unit to see photos, measurements and prices.</p></div>
+        <p>The Mill Rooms and Units 2 to 5 are reached through the main entrance on Mill Lane, into a shared entrance hall with a small kitchen and toilets. The Mill Rooms are four separate rooms over three floors, up the stairs from the hall, and each one is let on its own. Unit 6 has its own entrance at the front. Unit 7 is reached through the metal gates into the yard. Units 3 and 4 also have loading doors onto Mill Lane.</p><p>There are also two small rooms, 5A and 5B, off the hall, which work for storage or anything else your business needs, and two garages, G1 and G2.</p><p>Select any unit to see photos, measurements and prices.</p></div>
       <figure class="plan-card">${U.length ? planSVG(U) : '<div class="empty">No spaces listed yet.</div>'}
         <figcaption><span class="key"><i style="background:var(--accent)"></i>Available</span><span class="key"><i style="background:var(--brass)"></i>Coming soon</span><span class="key"><i style="background:var(--let)"></i>Let</span><span>Not to scale.</span><button type="button" class="btn sm" style="margin-left:auto" data-act="map-open">Enlarge map</button></figcaption>
       </figure>
@@ -458,9 +458,9 @@ function viewSite() {
     <div class="section-head"><h2 class="h2">What's included</h2></div>
     <div class="grid2">
       <section class="panel">
-        <p class="eyebrow">Units 1, 2, 5A and 5B</p>
+        <p class="eyebrow">Mill Rooms, Unit 2, 5A and 5B</p>
         <h3>One price, everything on</h3>
-        <p>The four rooms in the mill building (Unit 1), Unit 2 and the two small rooms 5A and 5B are let on one monthly price covering internet, electricity, water and the service charge, with no business rates to register for. Use them for whatever your business needs, from treatment rooms and therapies to crafts, studios or desk work.</p>
+        <p>The four Mill Rooms, Unit 2 and the two small rooms 5A and 5B are let on one monthly price covering internet, electricity, water and the service charge, with no business rates to register for. Use them for whatever your business needs, from treatment rooms and therapies to crafts, studios or desk work.</p>
         <div class="incl">${INCLUDES.map(i => `<div style="background:var(--raise)"><b>${esc(i)}</b><span class="muted">Included</span></div>`).join('')}</div>
       </section>
       <section class="panel">
@@ -476,7 +476,7 @@ function viewSite() {
     <div class="section-head"><h2 class="h2">How renting works</h2></div>
     <div class="grid2">
       <section class="panel"><h3>All-inclusive rooms</h3>
-        <p class="muted" style="font-size:13.5px">Unit 1 rooms, Unit 2, Rooms 5A and 5B</p>
+        <p class="muted" style="font-size:13.5px">Mill Rooms, Unit 2, Rooms 5A and 5B</p>
         <ul class="ticks"><li>Simple licence agreement: 3-month minimum, then monthly</li><li>1 month's notice either side</li><li>Deposit of 1 month's rent (2 months for 1D)</li><li>One monthly payment covers rent, bills and service charge</li></ul></section>
       <section class="panel"><h3>Workshops, warehouse and units</h3>
         <p class="muted" style="font-size:13.5px">Units 3 to 7 and the garages</p>
@@ -498,7 +498,7 @@ function viewSite() {
   <footer class="foot wrap">${esc(P.name)}${P.address ? ' · ' + esc(P.address) : ''} · <button type="button" class="linkish" data-view="tenant">Tenant sign in</button> · <button type="button" class="linkish" data-view="landlord">Landlord sign in</button>${isInstalled() ? '' : ' · <button type="button" class="linkish" data-act="get-app">Get the app</button>'}</footer>`;
 }
 function interestOptions() {
-  return [['any', 'Any space'], ['unit1', 'Any Unit 1 workspace (all inclusive)'], ['large', 'Any of Units 2–7'], ...units().map(u => [u.id, `${u.name} · ${STATUS[u.status]}`])];
+  return [['any', 'Any space'], ['unit1', 'Any Mill Room (all inclusive)'], ['large', 'Any of Units 2–7'], ...units().map(u => [u.id, `${u.name} · ${STATUS[u.status]}`])];
 }
 function enquireForm(unitId, wait) {
   const u = unitId ? unitById(unitId) : null;
@@ -700,7 +700,7 @@ function lNotify() {
 }
 function lSettings() {
   const P = prop(), nets = S.wifi?.networks || [];
-  const applies = a => a === 'all' ? 'Everyone' : a === 'unit1' ? 'Unit 1 workspaces' : (unitById(a)?.name || a);
+  const applies = a => a === 'all' ? 'Everyone' : a === 'unit1' ? 'Mill Rooms' : (unitById(a)?.name || a);
   return `<div class="grid2">
     <section class="panel"><div class="row" style="justify-content:space-between"><h3>Wi-Fi networks</h3><button class="btn sm" data-act="wifi-add">Add network</button></div>
       <p class="muted" style="font-size:13.5px">Tenants see the networks for their space in their portal. Update a password here and it changes for them straight away.</p>
@@ -742,7 +742,7 @@ function unitForm(u) {
     title: isNew ? 'Add a space' : 'Edit ' + u.name,
     fields: [
       {id:'code', label:'Short code (as on the plan)', value:u.code, required:true, placeholder:'e.g. 1C or 3'},
-      {id:'group', label:'Building', type:'select', options:[['unit1', 'Unit 1 (workspace)'], ['main', 'Units 2–7']], value:u.group},
+      {id:'group', label:'Building', type:'select', options:[['unit1', 'Mill Rooms'], ['main', 'Units 2–7']], value:u.group},
       {id:'type', label:'Type', value:u.type, required:true},
       {id:'size', label:'Size (sq ft)', type:'number', value:u.size},
       {id:'rent', label:'Rent per month (£)', type:'number', step:'0.01', value:u.rent},
@@ -917,7 +917,7 @@ function wifiForm(n) {
     fields: [
       {id:'ssid', label:'Network name', value: n.ssid, required:true},
       {id:'password', label:'Password', value: n.password, required:true},
-      {id:'appliesTo', label:'Who can see it', type:'select', full:true, options: [['all', 'All tenants'], ['unit1', 'Unit 1 workspaces'], ...units().map(u => [u.id, u.name])], value: n.appliesTo}
+      {id:'appliesTo', label:'Who can see it', type:'select', full:true, options: [['all', 'All tenants'], ['unit1', 'Mill Rooms'], ...units().map(u => [u.id, u.name])], value: n.appliesTo}
     ],
     submit: 'Save',
     onSubmit: async v => {
