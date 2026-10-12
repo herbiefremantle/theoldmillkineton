@@ -1,11 +1,11 @@
 {
  "property": {
   "name": "The Old Mill",
-  "tagline": "Rooms, workshops and storage to let in Kineton, from £250 a month with everything included.",
+  "tagline": "Rooms, workshops and storage to let in Kineton. Kineton businesses from £250 a month, everything included.",
   "address": "Mill Lane, Kineton",
   "description": "The Old Mill in Kineton has rooms, workshops and storage to let. The four rooms in the mill building (Unit 1), Unit 2 and the small rooms 5A and 5B come with everything included in one monthly price: internet, electricity, water and the service charge. They suit any small business, from treatment rooms and craft studios to desk work. The workshop and warehouse units suit businesses that need more room.\n\nViewings are by appointment. If nothing suits you today, join the waitlist and we will message you as soon as a space comes free.",
   "features": [
-   "Rooms from £250 a month with everything included, for any kind of small business",
+   "Kineton businesses from £250 a month, everything included, for any kind of small business",
    "Workshop and warehouse units with roller and double door access",
    "Shared entrance hall with a small kitchen and toilets",
    "Viewings by appointment: WhatsApp Pete on 07456 338 728",
@@ -462,7 +462,9 @@
    "ceilingM": null,
    "doorWidthM": null,
    "doorHeightM": null,
-   "availableFrom": ""
+   "availableFrom": "",
+   "nearbyExtra": 25,
+   "furtherExtra": 50
   },
   {
    "id": "5b",
@@ -492,7 +494,9 @@
    "ceilingM": null,
    "doorWidthM": null,
    "doorHeightM": null,
-   "availableFrom": ""
+   "availableFrom": "",
+   "nearbyExtra": 25,
+   "furtherExtra": 50
   },
   {
    "id": "g1",

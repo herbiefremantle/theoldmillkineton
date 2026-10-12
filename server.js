@@ -296,6 +296,30 @@ async function seedIfEmpty() {
   console.log(`Seeded ${seed.units.length} spaces and the property details.`);
 }
 
+// One-off data updates. Each runs once, and only changes text the landlord hasn't already edited.
+const strip = d => { const { id, ...rest } = d; return rest; };
+async function migrate() {
+  const done = strip((await store.get('admin', 'migrations')) || { id: 'migrations' });
+  if (!done['2026-10-local-rates']) {
+    for (const id of ['5a', '5b']) {
+      const u = await store.get('units', id);
+      if (u && u.nearbyExtra == null && u.furtherExtra == null) await store.put('units', id, { ...strip(u), nearbyExtra: 25, furtherExtra: 50 });
+    }
+    const p = await store.get('site', 'property');
+    if (p) {
+      const d = strip(p);
+      const oldTag = 'Rooms, workshops and storage to let in Kineton, from £250 a month with everything included.';
+      const oldFeat = 'Rooms from £250 a month with everything included, for any kind of small business';
+      if (d.tagline === oldTag) d.tagline = seed.property.tagline;
+      if (Array.isArray(d.features)) d.features = d.features.map(x => (x === oldFeat ? seed.property.features[0] : x));
+      await store.put('site', 'property', d);
+    }
+    done['2026-10-local-rates'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: local rates for Rooms 5A/5B and Kineton wording.');
+  }
+}
+
 async function ensureLandlord() {
   const email = clean(process.env.ADMIN_EMAIL || '', 200).toLowerCase();
   const pw = process.env.ADMIN_PASSWORD || '';
@@ -327,6 +351,7 @@ async function sessionSecret() {
 async function main() {
   await store.init();
   await seedIfEmpty();
+  await migrate();
   await ensureLandlord();
 
   app.use(session({

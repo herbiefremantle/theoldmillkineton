@@ -38,8 +38,9 @@ const LP_DEFAULT = {enabled: true, nearbyExtra: 50, furtherExtra: 100, nearbyMil
 const localPricing = () => Object.assign({}, LP_DEFAULT, prop().localPricing || {});
 const TIERS = {kineton: 'Kineton businesses', nearby: 'Within 6 miles', further: 'Further afield'};
 const usesLocal = u => localPricing().enabled && u.localPricing !== false && u.rent;
-const tierExtra = tier => { const L = localPricing(); return tier === 'nearby' ? Number(L.nearbyExtra) || 0 : tier === 'further' ? Number(L.furtherExtra) || 0 : 0; };
-const priceFor = (u, tier) => u && u.rent ? Number(u.rent) + (usesLocal(u) ? tierExtra(tier) : 0) : null;
+// A space can set its own step-ups (e.g. the small rooms); otherwise the site-wide amounts apply.
+const tierExtra = (tier, u) => { const L = localPricing(); const pick = (own, all) => Number(own ?? all) || 0; return tier === 'nearby' ? pick(u && u.nearbyExtra, L.nearbyExtra) : tier === 'further' ? pick(u && u.furtherExtra, L.furtherExtra) : 0; };
+const priceFor = (u, tier) => u && u.rent ? Number(u.rent) + (usesLocal(u) ? tierExtra(tier, u) : 0) : null;
 const reduced = u => u.status !== 'let' && u.wasRent && u.rent && Number(u.wasRent) > Number(u.rent);
 const scLine = u => u.serviceCharge === 'included' ? 'Service charge included'
   : u.serviceCharge === 'extra' ? (u.serviceChargeAmount ? `+ ${gbp(u.serviceChargeAmount)} service charge (Total ${gbp(totalRent(u))})` : '+ service charge (to be confirmed)')
@@ -366,17 +367,14 @@ function viewSite() {
     </div>
   </section>
 
-  ${localPricing().enabled ? (() => { const L = localPricing(); return `<section class="section wrap" id="local-rates">
-    <div class="two" style="align-items:center">
-      <div class="prose"><p class="eyebrow">Local business rates</p><h2 class="h2">Our best prices are for Kineton businesses</h2>
-        <p>We want The Old Mill to be home to local businesses, so the prices shown on each space are our Kineton business rates. Businesses from nearby villages and further afield are just as welcome, at the rates below.</p></div>
-      <div class="kpis num" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
-        <div class="kpi" style="background:var(--accent-soft)"><small>Kineton businesses</small><b>Best rate</b><small>The price shown on each space</small></div>
-        <div class="kpi"><small>Within ${esc(L.nearbyMiles)} miles</small><b>+${gbp(L.nearbyExtra)}</b><small>${esc(L.nearbyPlaces)}</small></div>
-        <div class="kpi"><small>Further afield</small><b>+${gbp(L.furtherExtra)}</b><small>${esc(L.furtherPlaces)}</small></div>
-      </div>
+  ${localPricing().enabled ? `<section class="section wrap" id="local-rates">
+    <div class="prose" style="max-width:68ch">
+      <p class="eyebrow">Local business rates</p>
+      <h2 class="h2">Kineton businesses get our best rates</h2>
+      <p>The prices shown on each space are our Kineton rates. We'd love The Old Mill to be full of village businesses: people who can walk or cycle to work, keep traffic off Mill Lane and keep trade local.</p>
+      <p>Businesses from nearby villages and further afield are just as welcome. Each space shows their price too.</p>
     </div>
-  </section>`; })() : ''}
+  </section>` : ''}
 
   <section class="section wrap" id="spaces">
     <div class="section-head"><h2 class="h2">The spaces</h2>
@@ -664,6 +662,8 @@ function unitForm(u) {
       {id:'availableFrom', label:'Available from (if coming soon)', type:'date', value:u.availableFrom},
       {id:'inclusive', label:'Rent includes internet, electricity and water', type:'checkbox', value:u.inclusive},
       {id:'localPricing', label:'Use local business rates (the rent above is the Kineton rate)', type:'checkbox', value:u.localPricing !== false},
+      {id:'nearbyExtra', label:'This space only: extra within 6 miles (£)', type:'number', step:'0.01', value:u.nearbyExtra, hint:'Blank uses the site-wide amount'},
+      {id:'furtherExtra', label:'This space only: extra further afield (£)', type:'number', step:'0.01', value:u.furtherExtra, hint:'Blank uses the site-wide amount'},
       {id:'serviceCharge', label:'Service charge', type:'select', options:[['included', 'Included in rent'], ['extra', 'Charged on top of rent'], ['none', 'No service charge']], value:u.serviceCharge || 'none'},
       {id:'serviceChargeAmount', label:'Service charge per month (£)', type:'number', step:'0.01', value:u.serviceChargeAmount, hint:'Only if charged on top'},
       {id:'widthM', label:'Width (m)', type:'number', step:'0.01', value:u.widthM},
