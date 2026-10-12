@@ -340,7 +340,7 @@
    "doorWidthM": null,
    "doorHeightM": null,
    "serviceCharge": "extra",
-   "serviceChargeAmount": null,
+   "serviceChargeAmount": 85,
    "info": [
     "Roof lights for natural light",
     "Shared entrance hall with a small kitchen and toilets",

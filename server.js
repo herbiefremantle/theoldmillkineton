@@ -318,6 +318,13 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: local rates for Rooms 5A/5B and Kineton wording.');
   }
+  if (!done['2026-10-unit5-service-charge']) {
+    const u = await store.get('units', '5');
+    if (u && u.serviceChargeAmount == null) await store.put('units', '5', { ...strip(u), serviceCharge: 'extra', serviceChargeAmount: 85 });
+    done['2026-10-unit5-service-charge'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: Unit 5 service charge £85.');
+  }
 }
 
 async function ensureLandlord() {
