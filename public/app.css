@@ -262,3 +262,7 @@ a{color:var(--accent)}
   .tierbar .filters button{white-space:nowrap}
   .tierbar.unchosen .tier-label{border-radius:8px}
 }
+.tierbar.chosen{justify-content:flex-end;padding-block:4px 5px}
+.tier-pick{display:flex;align-items:center;gap:8px;font-size:13px}
+.tier-pick select{padding:4px 28px 4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-weight:600;font-size:13px;color:var(--ink)}
+@media (max-width:640px){.tierbar.chosen{justify-content:center}.tierbar.chosen .tier-pick{flex-basis:auto}}

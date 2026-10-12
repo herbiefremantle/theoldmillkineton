@@ -43,9 +43,14 @@ try { const t = localStorage.getItem('oldmill.priceTier'); if (['kineton', 'near
 const RATE_LABEL = {kineton: 'Kineton business rate', nearby: 'Within 6 miles rate', further: 'Standard rate'};
 function priceBar() {
   if (!localPricing().enabled) return '';
-  const b = (k, l) => `<button type="button" data-act="tier" data-t="${k}" aria-pressed="${priceTier === k}">${l}</button>`;
-  return `<div class="wrap tierbar${tierChosen ? '' : ' unchosen'}"><span class="tier-label"><b class="tier-q"><span class="tier-long">Where is your business based?</span><span class="tier-short">Where are you based?</span></b> <span class="muted tier-note">${tierChosen ? 'Prices shown for your area. Kineton businesses get our best rates' : 'Choose one to see your prices. Kineton businesses get our best rates'}</span></span>
-    <div class="filters" role="group" aria-label="Show prices for a business based in">${b('kineton', 'Kineton')}${b('nearby', `Within ${esc(localPricing().nearbyMiles)} miles`)}${b('further', 'Further afield')}</div></div>`;
+  const L = localPricing(), opts = [['kineton', 'Kineton'], ['nearby', `Within ${esc(L.nearbyMiles)} miles`], ['further', 'Further afield']];
+  // Once chosen: a slim line with a dropdown to change it.
+  if (tierChosen) return `<div class="wrap tierbar chosen"><label class="tier-pick" for="tier-select"><span class="muted">Prices for a business based in:</span>
+    <select id="tier-select" data-act="tier-select">${opts.map(([k, l]) => `<option value="${k}"${priceTier === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>`;
+  // First visit: ask the question, with buttons.
+  const b = (k, l) => `<button type="button" data-act="tier" data-t="${k}" aria-pressed="false">${l}</button>`;
+  return `<div class="wrap tierbar unchosen"><span class="tier-label"><b class="tier-q"><span class="tier-long">Where is your business based?</span><span class="tier-short">Where are you based?</span></b> <span class="muted tier-note">Choose one to see your prices. Kineton businesses get our best rates</span></span>
+    <div class="filters" role="group" aria-label="Where is your business based?">${opts.map(([k, l]) => b(k, l)).join('')}</div></div>`;
 }
 const usesLocal = u => localPricing().enabled && u.localPricing !== false && u.rent;
 // A space can set its own step-ups (e.g. the small rooms); otherwise the site-wide amounts apply.
@@ -1175,6 +1180,7 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('change', e => {
   const el = e.target; if (!el.dataset || !el.dataset.act) return;
+  if (el.dataset.act === 'tier-select') { ACT.tier({t: el.value}); return; }
   if (el.dataset.act === 'pick-tenant') { curTenant = el.value; render(); }
   if (el.dataset.act === 'unit-status') setUnitStatus(el.dataset.id, el.value).catch(() => {});
   if (el.dataset.act === 'enq-status') { const x = S.enquiries.find(q => q.id === el.dataset.id); if (x) put('enquiries', {...x, status: el.value}).catch(() => {}); }
