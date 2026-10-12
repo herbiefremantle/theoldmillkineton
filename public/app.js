@@ -372,7 +372,6 @@ function viewSite() {
       <p class="eyebrow">Local business rates</p>
       <h2 class="h2">Kineton businesses get our best rates</h2>
       <p>The prices shown on each space are our Kineton rates. We'd love The Old Mill to be full of village businesses, with people who can walk or cycle to work and keep trade local.</p>
-      <p><b>Please walk where you can.</b> Parking is tight, and the roads around the Mill are residents' streets, so we ask tenants and visitors to walk or cycle as much as possible.</p>
       <p>Businesses from nearby villages and further afield are just as welcome. Each space shows their price too.</p>
     </div>
   </section>` : ''}
