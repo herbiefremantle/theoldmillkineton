@@ -48,6 +48,14 @@ const tierExtra = (tier, u) => {
 };
 const roundPrice = n => { const r = Number(localPricing().roundTo) || 0; return r > 0 ? Math.round(n / r) * r : Math.round(n * 100) / 100; };
 const priceFor = (u, tier) => !u || !u.rent ? null : !usesLocal(u) || tier === 'kineton' || !tier ? Number(u.rent) : roundPrice(Number(u.rent) + tierExtra(tier, u));
+// Deposit and terms. All-inclusive rooms are on a licence; other units are on a lease with a 12-month minimum.
+const TERMS = {
+  licence: {short: '3-month minimum, then monthly', long: "Licence agreement: monthly rolling after a 3-month minimum, with 1 month's notice either side."},
+  lease: {short: '12-month minimum', long: "Lease with a 12-month minimum term (1 to 3 years available). After the first 12 months either side can end it with 3 months' notice. Rent is reviewed each year."}
+};
+const termOf = u => (u.termType === 'licence' || u.termType === 'lease') ? u.termType : (u.inclusive ? 'licence' : 'lease');
+const depositMonths = u => u.depositMonths != null && u.depositMonths !== '' ? Number(u.depositMonths) : (u.id === '1d' ? 2 : u.inclusive ? 1 : 2);
+const depositText = u => `${depositMonths(u)} month${depositMonths(u) === 1 ? '' : 's'}' rent`;
 const reduced = u => u.status !== 'let' && u.wasRent && u.rent && Number(u.wasRent) > Number(u.rent);
 const scLine = u => u.serviceCharge === 'included' ? 'Service charge included'
   : u.serviceCharge === 'extra' ? (u.serviceChargeAmount ? `+ ${gbp(u.serviceChargeAmount)} service charge (Total ${gbp(totalRent(u))})` : '+ service charge (to be confirmed)')
@@ -254,6 +262,7 @@ function unitCard(u) {
     ${tiersHTML}
     ${reduced(u) ? `<div class="row" style="gap:8px;font-size:13.5px"><span class="pill s-soon">Reduced</span><span>Rent was <s>${gbp(u.wasRent)}</s>, now <b>${gbp(u.rent)}</b></span></div>` : ''}
     <div class="muted num" style="font-size:13.5px">${u.status === 'let' ? (u.serviceCharge === 'included' ? 'Service charge included' : u.serviceCharge === 'extra' ? 'Service charge extra' : 'No service charge') : esc(scLine(u))} · ${u.inclusive ? 'Bills included' : 'Bills paid by tenant'}</div>
+    <div class="muted" style="font-size:13px">Deposit ${depositText(u)} · ${TERMS[termOf(u)].short}</div>
     ${u.status === 'soon' && u.availableFrom ? `<div style="font-size:13.5px">Available from <b>${fmtDate(u.availableFrom)}</b></div>` : ''}
     <div class="row"><button class="btn ghost sm" data-act="unit" data-id="${esc(u.id)}">View details</button>${btn}</div>
   </article>`;
@@ -354,6 +363,8 @@ function viewUnit() {
             <tr><td class="muted">Bills</td><td>${billsText(u)}</td></tr>
             <tr><td class="muted">Service charge</td><td>${scText(u, true)}</td></tr>
             <tr><td class="muted">Business rates</td><td>${u.inclusive ? 'No need to register' : 'Tenant registers with the council. Up to 100% Small Business Rate Relief if you qualify'}</td></tr>
+            <tr><td class="muted">Deposit</td><td>${depositText(u)}${u.rent && u.status !== 'let' ? ` <span class="muted" style="font-size:13px">(${gbp(depositMonths(u) * Number(u.rent))} at the Kineton rate)</span>` : ''}</td></tr>
+            <tr><td class="muted">Terms</td><td>${esc(TERMS[termOf(u)].long)}</td></tr>
             <tr><td class="muted">Payment</td><td>${esc(payText())}</td></tr>
           </tbody></table></section>
         ${u.info && u.info.length ? `<section class="usec"><h2>Additional information</h2><ul class="ticks">${u.info.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>` : ''}
@@ -366,6 +377,8 @@ function viewUnit() {
           <div><span class="muted">Size</span><b>${u.size ? Number(u.size).toLocaleString('en-GB') + ' sq ft' : '—'}</b></div>
           <div><span class="muted">Service charge</span><b>${u.serviceCharge === 'included' ? 'Included' : u.serviceCharge === 'extra' ? (u.serviceChargeAmount && !let_ ? gbp(u.serviceChargeAmount) + ' (Total ' + gbp(totalRent(u)) + ')' : let_ ? 'Extra' : 'To be confirmed') : 'None'}</b></div>
           <div><span class="muted">Bills</span><b>${u.inclusive ? 'Included' : 'Tenant pays'}</b></div>
+          <div><span class="muted">Deposit</span><b>${depositText(u)}</b></div>
+          <div><span class="muted">Term</span><b>${TERMS[termOf(u)].short}</b></div>
           <div><span class="muted">Pay by</span><b>${esc((prop().paymentMethods || ['dd', 'bank']).map(k => PAY[k]).join(' or '))}</b></div>
         </div>
         ${cta}
@@ -439,6 +452,19 @@ function viewSite() {
         ${P.features.length ? `<ul class="ticks">${P.features.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
       </div>
     </div>
+  </section>
+
+  <section class="section wrap" id="how-renting-works">
+    <div class="section-head"><h2 class="h2">How renting works</h2></div>
+    <div class="grid2">
+      <section class="panel"><h3>All-inclusive rooms</h3>
+        <p class="muted" style="font-size:13.5px">Unit 1 rooms, Unit 2, Rooms 5A and 5B</p>
+        <ul class="ticks"><li>Simple licence agreement: 3-month minimum, then monthly</li><li>1 month's notice either side</li><li>Deposit of 1 month's rent (2 months for 1D)</li><li>One monthly payment covers rent, bills and service charge</li></ul></section>
+      <section class="panel"><h3>Workshops, warehouse and units</h3>
+        <p class="muted" style="font-size:13.5px">Units 3 to 7 and the garages</p>
+        <ul class="ticks"><li>Lease with a 12-month minimum term (1 to 3 years available)</li><li>3 months' notice after the first 12 months</li><li>Deposit of 2 months' rent</li><li>Rent plus a monthly service charge. You pay your own electricity and business rates</li></ul></section>
+    </div>
+    <p class="muted" style="font-size:14px;margin-top:14px">Rent is paid monthly in advance by Direct Debit or bank transfer. Viewings are by appointment. Deposits are held separately and returned within a month of leaving, once the space has been checked.</p>
   </section>
 
   <section class="section wrap">
@@ -516,6 +542,8 @@ function viewTenant() {
           ${u ? `<div><span class="muted">Service charge</span><b>${scText(u, false)}</b></div>` : ''}
           <div><span class="muted">You pay by</span><b>${PAY[t.paymentMethod] || 'Bank transfer'}</b></div>
           <div><span class="muted">Tenancy started</span><b>${fmtDate(t.leaseStart)}</b></div>
+          ${t.deposit ? `<div><span class="muted">Deposit</span><b>${gbp(t.deposit)}${t.depositReturned ? ' · returned' : t.depositReceived ? ' · held' : ''}</b></div>` : ''}
+          ${u ? `<div><span class="muted">Agreement</span><b>${TERMS[termOf(u)].short}</b></div>` : ''}
         </div></section>
       <section class="panel"><h3>Wi-Fi</h3>
         ${nets.length ? nets.map(n => `<div class="wifi"><span class="eyebrow">Network</span><span class="mono">${esc(n.ssid)}</span><span class="eyebrow" style="margin-top:6px">Password</span><div class="row" style="justify-content:space-between"><span class="mono">${esc(n.password)}</span><button class="btn sm" data-act="copy-wifi" data-id="${esc(n.id)}">Copy password</button></div></div>`).join('') : '<p class="muted">No Wi-Fi details have been shared for your unit yet.</p>'}
@@ -621,10 +649,10 @@ function lEnquiries() {
 function lTenants() {
   const T = activeTenants(), past = S.tenants.filter(t => t.status === 'former');
   return `<div class="row" style="justify-content:space-between"><p class="muted">${T.length} current tenant${T.length === 1 ? '' : 's'}.</p><button class="btn primary" data-act="tenant-add">Add tenant</button></div>
-    ${T.length ? `<div class="scroll"><table class="t num"><thead><tr><th>Tenant</th><th>Space</th><th>Rent</th><th>Since</th><th>Balance</th><th>Portal</th><th></th></tr></thead><tbody>
+    ${T.length ? `<div class="scroll"><table class="t num"><thead><tr><th>Tenant</th><th>Space</th><th>Rent</th><th>Deposit</th><th>Since</th><th>Balance</th><th>Portal</th><th></th></tr></thead><tbody>
     ${T.map(t => { const owed = S.invoices.filter(i => i.tenantId === t.id && i.status !== 'paid').reduce((s, i) => s + Number(i.total || 0), 0); const od = S.invoices.some(i => i.tenantId === t.id && isOverdue(i)); return `<tr>
       <td><b>${esc(t.business || t.name)}</b>${exampleChip(t)}<br><span class="muted" style="font-size:13px">${esc(t.name)} · <span class="mono">${esc(t.email)}</span></span></td>
-      <td>${esc(unitById(t.unitId)?.name || '—')}</td><td>${gbp(t.rent)}<br><span class="muted" style="font-size:12.5px">${PAY[t.paymentMethod] || 'Bank transfer'}</span></td><td>${fmtDate(t.leaseStart)}</td>
+      <td>${esc(unitById(t.unitId)?.name || '—')}</td><td>${gbp(t.rent)}<br><span class="muted" style="font-size:12.5px">${PAY[t.paymentMethod] || 'Bank transfer'}</span></td><td>${t.deposit ? gbp(t.deposit) : '—'}<br><span class="muted" style="font-size:12.5px">${t.depositReturned ? 'Returned ' + fmtDate(t.depositReturned) : t.depositReceived ? 'Held since ' + fmtDate(t.depositReceived) : t.deposit ? 'Not received yet' : ''}</span></td><td>${fmtDate(t.leaseStart)}</td>
       <td>${owed ? `<span class="pill s-${od ? 'overdue' : 'due'}">${gbp(owed)} ${od ? 'overdue' : 'due'}</span>` : '<span class="pill s-paid">Paid up</span>'}</td>
       <td>${portalCell(t)}</td>
       <td><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn sm" data-act="msg-new" data-to="${esc(t.id)}">Message</button><button class="btn sm" data-act="inv-new" data-tenant="${esc(t.id)}">Invoice</button><button class="btn sm" data-act="tenant-edit" data-id="${esc(t.id)}">Edit</button><button class="btn sm danger" data-act="tenant-end" data-id="${esc(t.id)}">End tenancy</button></div></td></tr>`; }).join('')}
@@ -707,6 +735,8 @@ function unitForm(u) {
       {id:'localPricing', label:'Use local business rates (the rent above is the Kineton rate)', type:'checkbox', value:u.localPricing !== false},
       {id:'nearbyExtra', label:'This space only: fixed extra within 6 miles (£)', type:'number', step:'0.01', value:u.nearbyExtra, hint:'Blank uses the site-wide amount'},
       {id:'furtherExtra', label:'This space only: extra further afield (£)', type:'number', step:'0.01', value:u.furtherExtra, hint:'Blank uses the site-wide amount'},
+      {id:'termType', label:'Agreement', type:'select', options:[['licence', 'Licence: 3-month minimum, then monthly'], ['lease', 'Lease: 12-month minimum']], value: termOf(u)},
+      {id:'depositMonths', label:'Deposit (months of rent)', type:'number', step:'0.5', value: depositMonths(u)},
       {id:'serviceCharge', label:'Service charge', type:'select', options:[['included', 'Included in rent'], ['extra', 'Charged on top of rent'], ['none', 'No service charge']], value:u.serviceCharge || 'none'},
       {id:'serviceChargeAmount', label:'Service charge per month (£)', type:'number', step:'0.01', value:u.serviceChargeAmount, hint:'Only if charged on top'},
       {id:'widthM', label:'Width (m)', type:'number', step:'0.01', value:u.widthM},
@@ -766,14 +796,25 @@ function tenantForm(t, fromEnq) {
       ...(localPricing().enabled ? [{id:'rateTier', label:'Rate', type:'select', options: Object.entries(TIERS), value: t.rateTier || fromEnq?.suggestedTier || fromEnq?.based || 'kineton'}] : []),
       {id:'rent', label:'Monthly rent (£)', type:'number', step:'0.01', value: t.rent ?? '', hint: 'Leave blank to use the space’s price for the chosen rate'},
       {id:'leaseStart', label:'Tenancy start', type:'date', value: t.leaseStart || fromEnq?.start || today()},
+      {id:'deposit', label:'Deposit (£)', type:'number', step:'0.01', value: t.deposit ?? '', hint: 'Leave blank to use the space’s deposit (months × rent)'},
+      {id:'depositReceived', label:'Deposit received on', type:'date', value: t.depositReceived || ''},
+      {id:'depositReturned', label:'Deposit returned on', type:'date', value: t.depositReturned || ''},
+      ...(isNew ? [{id:'firstInvoice', label:'Raise the first invoice now: deposit plus first month', type:'checkbox', value: true, full: true}] : []),
       {id:'paymentMethod', label:'Pays by', type:'select', options: (prop().paymentMethods && prop().paymentMethods.length ? prop().paymentMethods : ['dd', 'bank']).map(k => [k, PAY[k]]), value: t.paymentMethod || 'dd'}
     ],
     submit: isNew ? 'Add tenant' : 'Save',
     onSubmit: async v => {
       const u = unitById(v.unitId);
+      const firstInvoice = v.firstInvoice; delete v.firstInvoice;
       const nt = {...t, ...v, id: t.id || uid(), rent: v.rent ?? priceFor(u, v.rateTier || 'kineton') ?? null, status: 'active', example: isNew ? false : t.example};
+      if (nt.deposit == null && nt.rent && u) nt.deposit = Math.round(depositMonths(u) * Number(nt.rent) * 100) / 100;
       if (isNew) delete nt.example;
       await put('tenants', nt);
+      if (isNew && firstInvoice && nt.rent) {
+        const period = monthLabel(new Date((nt.leaseStart || today()) + 'T00:00:00'));
+        const lines = [...(nt.deposit ? [{desc: `Deposit, ${u?.name || 'unit'} (${depositText(u || {})})`, amount: Number(nt.deposit)}] : []), ...rentLines(nt, period)];
+        await createInvoice(nt, period, lines, nt.leaseStart && nt.leaseStart > today() ? nt.leaseStart : addDays(today(), 7), 'Deposit and first month. Please pay before your start date.');
+      }
       if (t.unitId && t.unitId !== v.unitId) { const old = unitById(t.unitId); if (old) await put('units', {...old, status: 'available'}).then(() => queueAlerts({...old, status:'available'})); }
       if (u && u.status !== 'let') await put('units', {...u, status: 'let'});
       if (fromEnq) await put('enquiries', {...fromEnq, status: 'converted'});
