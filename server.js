@@ -603,6 +603,13 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: removed photos with ladders and building work.');
   }
+  if (!done['2026-10-remove-unit5-corner']) {
+    const u = await store.get('units', '5');
+    if (u && Array.isArray(u.photos)) await store.put('units', '5', { ...strip(u), photos: u.photos.filter(p => !(p && typeof p === 'object' && p.src === 'img/unit-5-3.jpg')) });
+    done['2026-10-remove-unit5-corner'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: removed Unit 5 corner photo.');
+  }
 }
 
 async function ensureLandlord() {
