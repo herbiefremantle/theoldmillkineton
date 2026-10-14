@@ -472,7 +472,7 @@ function viewSite() {
       <p>The prices shown on each space are our Kineton rates. We'd love The Old Mill to be full of village businesses, with people who can walk or cycle to work and keep trade local.</p>
       <p>Businesses from nearby villages and further afield are just as welcome. Each space shows their price too.</p>
     </div>
-    <figure class="hero-photo"><img src="img/1st-floor-large-1.jpg" alt="A bright first floor room in the mill building, with timber beams and two windows" loading="lazy" style="aspect-ratio:3/2;object-position:50% 50%"><figcaption>Hatch, first floor</figcaption></figure>
+    <figure class="hero-photo"><img src="img/hatch-1.jpg" alt="Hatch, a bright first floor room with timber beams, two windows and the hatch in the ceiling" loading="lazy" style="aspect-ratio:3/2;object-position:50% 50%"><figcaption>Hatch, first floor</figcaption></figure>
     </div>
   </section>` : ''}
 

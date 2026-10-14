@@ -572,6 +572,17 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: Mill Rooms flooring note.');
   }
+  if (!done['2026-10-mill-room-photos']) {
+    // New photos for Fodder, Hatch and Hoist Loft. Only replaces the old/placeholder sets, never ones the landlord has edited.
+    for (const id of ['1b', '1c', '1d']) {
+      const u = await store.get('units', id), want = seed.units.find(x => x.id === id);
+      const old = u && (u.photos || []).map(p => (typeof p === 'string' ? '' : p.src || '')).join(',');
+      if (u && want && (!old.replace(/,/g, '') || /1st-floor-(small|large)/.test(old))) await store.put('units', id, { ...strip(u), photos: want.photos });
+    }
+    done['2026-10-mill-room-photos'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: new Mill Room photos.');
+  }
 }
 
 async function ensureLandlord() {

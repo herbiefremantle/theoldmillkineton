@@ -85,16 +85,20 @@
    ],
    "photos": [
     {
-     "caption": "Room",
-     "src": "img/1st-floor-small-1.jpg"
+     "caption": "Fodder",
+     "src": "img/fodder-1.jpg"
     },
     {
-     "caption": "Windows",
-     "src": "img/1st-floor-small-2.jpg"
+     "caption": "Fodder",
+     "src": "img/fodder-2.jpg"
     },
     {
-     "caption": "Beams",
-     "src": "img/1st-floor-small-3.jpg"
+     "caption": "Fodder",
+     "src": "img/fodder-3.jpg"
+    },
+    {
+     "caption": "Fodder",
+     "src": "img/fodder-4.jpg"
     }
    ],
    "access": "Through the main building entrance on Mill Lane, then upstairs",
@@ -129,16 +133,16 @@
    ],
    "photos": [
     {
-     "caption": "Room",
-     "src": "img/1st-floor-large-1.jpg"
+     "caption": "Hatch, with the ceiling hatch",
+     "src": "img/hatch-1.jpg"
     },
     {
-     "caption": "Beams",
-     "src": "img/1st-floor-large-2.jpg"
+     "caption": "Hatch",
+     "src": "img/hatch-2.jpg"
     },
     {
-     "caption": "Windows",
-     "src": "img/1st-floor-large-3.jpg"
+     "caption": "Hatch",
+     "src": "img/hatch-3.jpg"
     }
    ],
    "access": "Through the main building entrance on Mill Lane, then upstairs",
@@ -174,9 +178,38 @@
     "Shared entrance hall with a small kitchen and toilets"
    ],
    "photos": [
-    "Room 1",
-    "Room 2",
-    "Storage area"
+    {
+     "caption": "Hoist Loft",
+     "src": "img/hoist-loft-13.jpg"
+    },
+    {
+     "caption": "Hoist Loft",
+     "src": "img/img-1515.jpg"
+    },
+    {
+     "caption": "Hoist Loft",
+     "src": "img/hoist-loft-1.jpg"
+    },
+    {
+     "caption": "Hoist Loft",
+     "src": "img/hoist-loft-2.jpg"
+    },
+    {
+     "caption": "Hoist Loft",
+     "src": "img/hoist-loft-4.jpg"
+    },
+    {
+     "caption": "Hoist Loft",
+     "src": "img/hoist-loft-5.jpg"
+    },
+    {
+     "caption": "Hoist Loft",
+     "src": "img/hoist-loft-6.jpg"
+    },
+    {
+     "caption": "The original hoist in the roof",
+     "src": "img/img-1508.jpg"
+    }
    ],
    "access": "Through the main building entrance on Mill Lane, then upstairs",
    "floors": [
