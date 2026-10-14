@@ -46,8 +46,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .hero-photo{margin:0;min-width:0;display:grid;gap:8px}
 .hero-photo img{width:100%;aspect-ratio:2/1;object-fit:cover;object-position:50% 100%;border-radius:var(--card);display:block}
 .hero-photo figcaption{font-size:12.5px;color:var(--muted)}
-.ph.has-img{background:var(--surface)}
-.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph.has-img{background:var(--let-soft)}
+.ph img{width:100%;height:100%;object-fit:contain;display:block} /* whole photo always visible */
 .cta .logo{width:84px;height:84px;border-radius:50%;background:#fff;flex:none}
 .brand svg{flex:none}
 .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;flex-wrap:wrap}
@@ -190,7 +190,7 @@ pre.draft{white-space:pre-wrap;font:13px/1.5 var(--f-mono);background:var(--surf
 .ph b{font:800 16px/1.1 var(--f-display);letter-spacing:.04em;color:var(--ink)}
 .ucard{overflow:hidden}
 .ucard{padding:12px 12px 18px}
-.ucard > .ph{aspect-ratio:16/9;margin:0;border:0;border-radius:14px}
+.ucard > .ph{aspect-ratio:4/3;margin:0;border:0;border-radius:14px}
 .ucard > :not(.ph){margin-inline:6px}
 .upage{padding-block:20px 56px;display:grid;gap:22px}
 .back{border:0;background:none;color:var(--muted);cursor:pointer;padding:0;font-weight:500;justify-self:start}
@@ -203,7 +203,7 @@ pre.draft{white-space:pre-wrap;font:13px/1.5 var(--f-mono);background:var(--surf
 @media (max-width:900px){.aside{position:static}}
 .price{font:800 48px/1 var(--f-display);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .gallery{display:grid;gap:10px}
-.gallery .ph.main{aspect-ratio:16/10}
+.gallery .ph.main{aspect-ratio:4/3;max-height:70vh;width:100%}
 .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
 .thumbs button{padding:0;border:2px solid transparent;border-radius:16px;background:none;cursor:pointer}
 .thumbs button[aria-pressed="true"]{border-color:var(--accent)}
