@@ -562,6 +562,16 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: Hatch window wording.');
   }
+  if (!done['2026-10-mill-room-flooring']) {
+    const line = 'Flooring is chosen by the tenant: lay your own over the existing underlay, or replace it';
+    for (const id of ['1a', '1b', '1c', '1d']) {
+      const u = await store.get('units', id);
+      if (u && Array.isArray(u.info) && !u.info.some(x => /flooring/i.test(x))) await store.put('units', id, { ...strip(u), info: [line, ...u.info] });
+    }
+    done['2026-10-mill-room-flooring'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: Mill Rooms flooring note.');
+  }
 }
 
 async function ensureLandlord() {
