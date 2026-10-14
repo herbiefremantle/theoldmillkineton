@@ -274,7 +274,7 @@ function planSVG(list) {
   const ink = s => s === 'let' ? 'var(--ink)' : 'var(--accent-ink)';
   const blocks = list.filter(u => PLAN[u.id]).map(u => {
     const p = PLAN[u.id];
-    return `<g class="blk" data-act="unit" data-id="${esc(u.id)}" tabindex="0" role="button" aria-label="${esc(u.name)}, ${STATUS[u.status] || ''}">
+    return `<g class="blk" data-act="unit" data-id="${esc(u.id)}" tabindex="0" role="button" aria-label="${esc(u.shortName || u.code)} ${esc((STATUS[u.status] || '').toUpperCase())}: ${esc(u.name)}">
       <polygon points="${p.pts}" fill="${fill(u.status)}"></polygon>
       ${(() => {
         const words = u.shortName ? u.shortName.split(' ') : [u.code];
