@@ -296,3 +296,10 @@ h3.ucode a{color:inherit;text-decoration:none}
 h3.ucode a:hover{text-decoration:underline}
 .foot a{color:inherit}
 picture{display:contents}
+/* Photos beside text: same height as the text column, cropped neatly to fill */
+.hero{align-items:stretch}
+.hero-photo,.match-photo .hero-photo{position:relative;display:flex;flex-direction:column;gap:8px;min-width:0}
+.match-photo{align-items:stretch}
+.hero-photo picture{display:block;position:relative;flex:1 1 auto;min-height:220px}
+.hero-photo picture img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;aspect-ratio:auto!important;border-radius:var(--card)}
+@media (max-width:900px){.hero-photo picture{flex:none;aspect-ratio:16/10;min-height:0}}

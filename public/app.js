@@ -553,7 +553,7 @@ function viewSite() {
   </section>
 
   ${localPricing().enabled ? `<section class="section wrap" id="local-rates">
-    <div class="two" style="align-items:center">
+    <div class="two match-photo">
     <div class="prose">
       <p class="eyebrow">Local business rates</p>
       <h2 class="h2">${localMerged() ? 'Local businesses get our best rates' : 'Kineton businesses get our best rates'}</h2>
