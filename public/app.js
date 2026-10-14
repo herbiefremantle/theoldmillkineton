@@ -1466,7 +1466,17 @@ const ACT = {
   'lp-edit': () => lpForm(),
   'push-on': () => enablePush(),
   'push-off': () => disablePush(),
-  'push-test': async () => { try { const r = await api('POST', '/api/admin/push/test'); toast(r.sent ? 'Test sent. Check your notifications.' : 'No devices are set up yet.'); } catch (e) { toast(e.message); } },
+  'push-test': async () => {
+    try {
+      const r = await api('POST', '/api/admin/push/test');
+      const dev = d => /iPhone|iPad/.test(d || '') ? 'iPhone/iPad' : /Android/.test(d || '') ? 'Android' : /Mac/.test(d || '') ? 'Mac' : /Windows/.test(d || '') ? 'Windows PC' : 'device';
+      openSheet(`<header><h2>Notification test</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header>
+        <p>${r.report.length ? `Sent to <b>${r.sent}</b> of ${r.report.length} registered device${r.report.length === 1 ? '' : 's'}.` : 'No devices are registered yet. Tap <b>Turn on notifications</b> first.'}</p>
+        ${r.report.length ? `<div class="list" style="font-size:13.5px">${r.report.map(x => `<div><span>${dev(x.device)} <span class="muted">(${esc(x.service)})</span></span><span>${x.ok ? '<span class="pill s-paid">Sent</span>' : `<span class="pill s-overdue">Failed</span> <span class="mono" style="font-size:12px">${esc(x.error)}</span>`}</span></div>`).join('')}</div>` : ''}
+        <p class="muted" style="font-size:13px">This device: ${pushState.on ? 'notifications turned on' : 'not turned on'}${pushState.supported ? '' : ' (this browser can’t receive them)'} · permission: ${'Notification' in window ? esc(Notification.permission) : 'not available'}.</p>
+        <footer><button class="btn primary" data-act="close">Close</button></footer>`);
+    } catch (e) { toast(e.message); }
+  },
   'mail-folder': d => { mailState.folder = d.f; mailState.list = null; loadMail(); },
   'mail-refresh': () => loadMail(),
   'mail-open': d => mailOpen(d.uid),

@@ -344,8 +344,9 @@ function routes() {
   }));
   admin.get('/push/devices', wrap(async (req, res) => res.json({ devices: (await store.list('pushsubs')).map(d => ({ device: d.device, createdAt: d.createdAt })) })));
   admin.post('/push/test', wrap(async (req, res) => {
-    const sent = await notifyLandlord({ title: 'The Old Mill', body: 'Notifications are working. You’ll get one whenever someone requests a space.', url: '/landlord?tab=enquiries' });
-    res.json({ sent });
+    const report = [];
+    const sent = await notifyLandlord({ title: 'The Old Mill', body: 'Notifications are working. You’ll get one whenever someone requests a space.', url: '/landlord?tab=enquiries' }, report);
+    res.json({ sent, report });
   }));
 
   /* landlord mailbox */
@@ -696,12 +697,18 @@ async function setupPush() {
   webpush.setVapidDetails(`mailto:${process.env.MAIL_USER || process.env.ADMIN_EMAIL || 'hello@theoldmillkineton.co.uk'}`, VAPID.publicKey, VAPID.privateKey);
 }
 // Sends to every device the landlord has turned notifications on for; forgets devices that have gone.
-async function notifyLandlord(msg) {
+async function notifyLandlord(msg, report) {
   if (!VAPID.publicKey) return 0;
   let sent = 0;
   for (const s of await store.list('pushsubs')) {
-    try { await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, JSON.stringify(msg), { TTL: 86400, urgency: 'high' }); sent++; }
-    catch (e) { if (e.statusCode === 404 || e.statusCode === 410) await store.del('pushsubs', s.id); else console.warn('Push not sent:', e.statusCode || e.message); }
+    const where = (s.endpoint.match(/^https:\/\/([^/]+)/) || [])[1] || '?';
+    try { await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, JSON.stringify(msg), { TTL: 86400, urgency: 'high' }); sent++; if (report) report.push({ device: s.device, service: where, ok: true }); }
+    catch (e) {
+      const why = `${e.statusCode || ''} ${(e.body || e.message || '').toString().slice(0, 200)}`.trim();
+      console.warn('Push not sent:', where, why);
+      if (report) report.push({ device: s.device, service: where, ok: false, error: why });
+      if (e.statusCode === 404 || e.statusCode === 410) await store.del('pushsubs', s.id);
+    }
   }
   return sent;
 }
