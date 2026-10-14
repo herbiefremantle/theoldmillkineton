@@ -303,3 +303,7 @@ picture{display:contents}
 .hero-photo picture{display:block;position:relative;flex:1 1 auto;min-height:220px}
 .hero-photo picture img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;aspect-ratio:auto!important;border-radius:var(--card)}
 @media (max-width:900px){.hero-photo picture{flex:none;aspect-ratio:16/10;min-height:0}}
+/* Local rates photo: show the whole picture at its own shape (4:3) */
+.match-photo{align-items:center}
+.match-photo .hero-photo picture{flex:none;aspect-ratio:4/3;min-height:0}
+.match-photo .hero-photo picture img{object-fit:contain}
