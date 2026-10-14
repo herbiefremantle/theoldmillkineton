@@ -560,7 +560,7 @@ function viewSite() {
       <p>${localMerged() ? `The prices shown on each space are for businesses based in Kineton or within ${esc(localPricing().nearbyMiles)} miles, such as Tysoe and Wellesbourne.` : 'The prices shown on each space are our Kineton rates.'} We'd love The Old Mill to be full of local businesses, with people who can walk or cycle to work and keep trade local.</p>
       <p>Businesses from further afield are just as welcome. Choose <b>Further afield</b> at the top of the page to see their prices.</p>
     </div>
-    <figure class="hero-photo">${pictureHTML('img/hatch-1.jpg', 'Hatch, a bright first floor room with timber beams, two windows and the hatch in the ceiling', '(max-width: 900px) 92vw, 560px', 'loading="lazy" width="1400" height="1050" style="aspect-ratio:3/2;object-position:50% 50%"')}<figcaption>Hatch, first floor</figcaption></figure>
+    <figure class="hero-photo">${pictureHTML('img/hoist-loft-13.jpg', 'Hoist Loft, the top floor of the mill with exposed timber roof beams, a round window and wooden floorboards', '(max-width: 900px) 92vw, 560px', 'loading="lazy" width="1400" height="1050"')}<figcaption>Hoist Loft, top floor</figcaption></figure>
     </div>
   </section>` : ''}
 
