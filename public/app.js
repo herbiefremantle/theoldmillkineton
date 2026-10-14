@@ -34,22 +34,27 @@ const sizeText = u => u.size ? `${Number(u.size).toLocaleString('en-GB')} sq ft 
 const scText = (u, pub) => u.serviceCharge === 'included' ? 'Included in rent' : u.serviceCharge === 'extra' ? (u.serviceChargeAmount && !(pub && u.status === 'let') ? `${gbp(u.serviceChargeAmount)} / month on top of rent (Total ${gbp(totalRent(u))})` : (pub && u.status === 'let') ? 'Payable on top of rent' : 'Payable on top of rent, amount to be confirmed') : 'None';
 const billsText = u => u.inclusive ? 'Internet, electricity & water included' : 'Electricity paid by tenant';
 // Local business rates: the listed rent is the Kineton rate; businesses further away pay a set amount more.
-const LP_DEFAULT = {enabled: true, mode: 'percent', nearbyPct: 10, furtherPct: 20, roundTo: 5, nearbyExtra: 50, furtherExtra: 100, nearbyMiles: 6, nearbyPlaces: 'Tysoe, Wellesbourne and other villages within 6 miles', furtherPlaces: 'Leamington, Stratford, Coventry and beyond'};
+const LP_DEFAULT = {enabled: true, mode: 'percent', nearbyPct: 0, furtherPct: 20, roundTo: 5, nearbyExtra: 50, furtherExtra: 100, nearbyMiles: 6, nearbyPlaces: 'Tysoe, Wellesbourne and other villages within 6 miles', furtherPlaces: 'Leamington, Stratford, Coventry and beyond'};
 const localPricing = () => Object.assign({}, LP_DEFAULT, prop().localPricing || {});
 const TIERS = {kineton: 'Kineton businesses', nearby: 'Within 6 miles', further: 'Further afield'};
 // Which area's prices visitors are looking at (remembered on their device).
 let priceTier = 'kineton', tierChosen = false;
 try { const t = localStorage.getItem('oldmill.priceTier'); if (['kineton', 'nearby', 'further'].includes(t)) { priceTier = t; tierChosen = true; } } catch (e) {}
-const RATE_LABEL = {kineton: 'Kineton business rate', nearby: 'Within 6 miles rate', further: 'Standard rate'};
+// When "within 6 miles" costs the same as Kineton, the two are shown as one local rate.
+const localMerged = () => { const L = localPricing(); return (L.mode === 'percent' ? Number(L.nearbyPct) : Number(L.nearbyExtra)) === 0; };
+const RATE_LABEL_ALL = {kineton: 'Kineton business rate', nearby: 'Within 6 miles rate', further: 'Standard rate'};
+const RATE_LABEL = new Proxy({}, {get: (o, k) => localMerged() && (k === 'kineton' || k === 'nearby') ? 'Local rate' : RATE_LABEL_ALL[k]});
 function priceBar() {
   if (!localPricing().enabled) return '';
-  const L = localPricing(), opts = [['kineton', 'Kineton'], ['nearby', `Within ${esc(L.nearbyMiles)} miles`], ['further', 'Further afield']];
+  const L = localPricing(), merged = localMerged();
+  if (merged && priceTier === 'nearby') priceTier = 'kineton';
+  const opts = merged ? [['kineton', `Kineton or within ${esc(L.nearbyMiles)} miles`], ['further', 'Further afield']] : [['kineton', 'Kineton'], ['nearby', `Within ${esc(L.nearbyMiles)} miles`], ['further', 'Further afield']];
   // Once chosen: a slim line with a dropdown to change it.
   if (tierChosen) return `<div class="wrap tierbar chosen"><label class="tier-pick" for="tier-select"><span class="muted">Prices for a business based in:</span>
     <select id="tier-select" data-act="tier-select">${opts.map(([k, l]) => `<option value="${k}"${priceTier === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>`;
   // First visit: ask the question, with buttons.
   const b = (k, l) => `<button type="button" data-act="tier" data-t="${k}" aria-pressed="false">${l}</button>`;
-  return `<div class="wrap tierbar unchosen"><span class="tier-label"><b class="tier-q"><span class="tier-long">Where is your business based?</span><span class="tier-short">Where are you based?</span></b> <span class="muted tier-note">Choose one to see your prices. Kineton businesses get our best rates</span></span>
+  return `<div class="wrap tierbar unchosen"><span class="tier-label"><b class="tier-q"><span class="tier-long">Where is your business based?</span><span class="tier-short">Where are you based?</span></b> <span class="muted tier-note">Choose one to see your prices. ${merged ? 'Local businesses get our best rates' : 'Kineton businesses get our best rates'}</span></span>
     <div class="filters" role="group" aria-label="Where is your business based?">${opts.map(([k, l]) => b(k, l)).join('')}</div></div>`;
 }
 const usesLocal = u => localPricing().enabled && u.localPricing !== false && u.rent;
@@ -468,9 +473,9 @@ function viewSite() {
     <div class="two" style="align-items:center">
     <div class="prose">
       <p class="eyebrow">Local business rates</p>
-      <h2 class="h2">Kineton businesses get our best rates</h2>
-      <p>The prices shown on each space are our Kineton rates. We'd love The Old Mill to be full of village businesses, with people who can walk or cycle to work and keep trade local.</p>
-      <p>Businesses from nearby villages and further afield are just as welcome. Each space shows their price too.</p>
+      <h2 class="h2">${localMerged() ? 'Local businesses get our best rates' : 'Kineton businesses get our best rates'}</h2>
+      <p>${localMerged() ? `The prices shown on each space are for businesses based in Kineton or within ${esc(localPricing().nearbyMiles)} miles, such as Tysoe and Wellesbourne.` : 'The prices shown on each space are our Kineton rates.'} We'd love The Old Mill to be full of local businesses, with people who can walk or cycle to work and keep trade local.</p>
+      <p>Businesses from further afield are just as welcome. Choose <b>Further afield</b> at the top of the page to see their prices.</p>
     </div>
     <figure class="hero-photo"><img src="img/hatch-1.jpg" alt="Hatch, a bright first floor room with timber beams, two windows and the hatch in the ceiling" loading="lazy" style="aspect-ratio:3/2;object-position:50% 50%"><figcaption>Hatch, first floor</figcaption></figure>
     </div>

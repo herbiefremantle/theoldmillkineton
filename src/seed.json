@@ -18,7 +18,19 @@
    "dd",
    "bank"
   ],
-  "bankDetails": ""
+  "bankDetails": "",
+  "localPricing": {
+   "enabled": true,
+   "mode": "percent",
+   "nearbyPct": 0,
+   "furtherPct": 20,
+   "roundTo": 5,
+   "nearbyMiles": 6,
+   "nearbyExtra": 0,
+   "furtherExtra": 100,
+   "nearbyPlaces": "Tysoe, Wellesbourne and other villages within 6 miles",
+   "furtherPlaces": "Leamington, Stratford, Coventry and beyond"
+  }
  },
  "units": [
   {

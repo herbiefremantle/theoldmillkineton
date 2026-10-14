@@ -583,6 +583,14 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: new Mill Room photos.');
   }
+  if (!done['2026-10-local-within-6-miles']) {
+    // Kineton and within 6 miles both pay the listed (best) price; only further afield pays more.
+    const p = await store.get('site', 'property');
+    if (p) { const d = strip(p); d.localPricing = { ...(d.localPricing || {}), nearbyPct: 0, nearbyExtra: 0 }; await store.put('site', 'property', d); }
+    done['2026-10-local-within-6-miles'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: within 6 miles gets the local rate.');
+  }
 }
 
 async function ensureLandlord() {
