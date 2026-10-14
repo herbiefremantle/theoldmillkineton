@@ -8,3 +8,20 @@ self.addEventListener('fetch', event => {
   if (new URL(event.request.url).origin !== self.location.origin) return;
   event.respondWith(fetch(event.request));
 });
+
+// Phone notifications for the landlord (new requests from the website).
+self.addEventListener('push', event => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (e) { d = { body: event.data && event.data.text() }; }
+  event.waitUntil(self.registration.showNotification(d.title || 'The Old Mill', {
+    body: d.body || '', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: 'oldmill-enquiry', renotify: true, data: { url: d.url || '/landlord' }
+  }));
+});
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/landlord';
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    const open = list.find(c => new URL(c.url).origin === self.location.origin);
+    return open ? open.navigate(url).then(c => c && c.focus()) : self.clients.openWindow(url);
+  }));
+});

@@ -739,6 +739,9 @@ function viewsPanel() {
     ${rows.map(r => `<tr><td><b>${esc(r.u.name)}</b> <span class="pill s-${esc(r.u.status)}" style="font-size:11px">${STATUS[r.u.status] || ''}</span></td><td style="text-align:right"><b>${r.unique}</b></td><td style="text-align:right">${r.week}</td><td style="text-align:right" class="muted">${r.total}</td></tr>`).join('')}
     </tbody></table></div></section>`;
 }
+function pushNudge() {
+  return pushState.checked && !pushState.on ? `<section class="panel" style="background:var(--accent-soft)"><div class="row" style="justify-content:space-between"><span><b>Get a notification when someone requests a space.</b> <span class="muted">Turn it on for this device.</span></span><button class="btn primary sm" data-act="push-on">Turn on</button></div></section>` : '';
+}
 function lOverview() {
   const U = units(), letN = U.filter(u => u.status === 'let').length;
   const roll = activeTenants().reduce((s, t) => s + Number(t.rent || 0), 0);
@@ -751,7 +754,7 @@ function lOverview() {
   if (pend) attention.push([`<span class="pill s-pending">Waitlist</span> ${pend} availability alert${pend > 1 ? 's' : ''} ready to send`, `<button class="btn sm" data-act="ltab" data-tab="notify">Open</button>`]);
   const ph = U.filter(u => u.placeholder).length;
   if (ph) attention.push([`<span class="pill s-soon">Set up</span> ${ph} space${ph > 1 ? 's still show' : ' still shows'} example sizes and rents`, `<button class="btn sm" data-act="ltab" data-tab="spaces">Edit spaces</button>`]);
-  return `<div class="kpis num">
+  return `${pushNudge()}<div class="kpis num">
       <div class="kpi"><small>Occupancy</small><b>${letN} / ${U.length}</b><small>spaces let</small><div class="meter"><i style="width:${U.length ? Math.round(letN / U.length * 100) : 0}%"></i></div></div>
       <div class="kpi"><small>Monthly rent roll</small><b>${gbp(roll)}</b><small>${activeTenants().length} tenants</small></div>
       <div class="kpi"><small>Unpaid invoices</small><b>${gbp(open.reduce((s, i) => s + Number(i.total || 0), 0))}</b><small>${overdue.length ? `<span style="color:var(--danger)">${overdue.length} overdue</span>` : 'none overdue'}</small></div>
@@ -826,10 +829,45 @@ function lNotify() {
       <pre class="draft">Subject: ${esc(o.subject)}\n\n${esc(o.body)}</pre>
       <div class="row">${mailState.enabled && o.status === 'pending' ? `<button class="btn sm primary" data-act="out-send" data-id="${esc(o.id)}">Send email</button>` : ''}<button class="btn sm" data-act="out-copy" data-id="${esc(o.id)}">Copy email</button>${o.status === 'pending' ? `<button class="btn sm primary" data-act="out-sent" data-id="${esc(o.id)}">Mark sent</button>` : ''}<button class="btn sm danger" data-act="out-del" data-id="${esc(o.id)}">Delete</button></div></section>`).join('')}</div>` : '<div class="empty">No alerts yet. Set a space to Available on the Spaces tab and alerts for matching waitlist entries will appear here.</div>'}`;
 }
+/* ---------- phone notifications ---------- */
+const pushState = {supported: 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window, on: false, checked: false, busy: false};
+async function checkPush() {
+  if (!pushState.supported) { pushState.checked = true; return; }
+  try { const reg = await navigator.serviceWorker.ready; pushState.on = !!(await reg.pushManager.getSubscription()) && Notification.permission === 'granted'; } catch (e) {}
+  pushState.checked = true; render();
+}
+const b64ToBytes = b => { const p = '='.repeat((4 - b.length % 4) % 4), raw = atob((b + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(raw, c => c.charCodeAt(0)); };
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+async function enablePush() {
+  if (!pushState.supported) { toast(isIOS() && !isInstalled() ? 'On iPhone, add the Old Mill app to your Home Screen first, open it from the icon, then try again.' : 'This browser can’t show notifications. Try Chrome, or the installed app.'); return; }
+  pushState.busy = true; render();
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Notifications are blocked. Allow them in your phone’s settings for this app, then try again.'); return; }
+    const reg = await navigator.serviceWorker.ready;
+    const {key} = await api('GET', '/api/admin/push/key');
+    const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64ToBytes(key)});
+    await api('POST', '/api/admin/push/subscribe', {subscription: sub.toJSON(), device: navigator.userAgent});
+    pushState.on = true; toast('Notifications are on for this device');
+  } catch (e) { toast(e.message || 'Couldn’t turn notifications on. Try again.'); }
+  finally { pushState.busy = false; render(); }
+}
+async function disablePush() {
+  try { const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(); if (sub) { await api('POST', '/api/admin/push/unsubscribe', {endpoint: sub.endpoint}); await sub.unsubscribe(); } } catch (e) {}
+  pushState.on = false; toast('Notifications are off for this device'); render();
+}
+function pushPanel() {
+  const msg = !pushState.supported ? (isIOS() && !isInstalled() ? 'On iPhone: add the Old Mill app to your Home Screen (Share → Add to Home Screen), open it from the icon, sign in, and come back here.' : 'This browser can’t show notifications. Use the installed app or Chrome.')
+    : pushState.on ? 'On for this device. You’ll get a notification whenever someone requests a space or joins the waitlist.' : 'Get a notification on this phone or computer whenever someone requests a space or joins the waitlist.';
+  return `<section class="panel"><h3>Phone notifications</h3><p class="muted" style="font-size:13.5px">${msg}</p>
+    <div class="row">${pushState.supported ? (pushState.on ? '<button class="btn" data-act="push-test">Send a test</button><button class="btn ghost" data-act="push-off">Turn off on this device</button>' : `<button class="btn primary" data-act="push-on"${pushState.busy ? ' disabled' : ''}>${pushState.busy ? 'Turning on…' : 'Turn on notifications'}</button>`) : ''}</div>
+    <p class="muted" style="font-size:12.5px">Turn it on separately on each device you use.</p></section>`;
+}
 function lSettings() {
   const P = prop(), nets = S.wifi?.networks || [];
   const applies = a => a === 'all' ? 'Everyone' : a === 'unit1' ? 'Mill Rooms' : (unitById(a)?.name || a);
   return `<div class="grid2">
+    ${pushPanel()}
     <section class="panel"><div class="row" style="justify-content:space-between"><h3>Wi-Fi networks</h3><button class="btn sm" data-act="wifi-add">Add network</button></div>
       <p class="muted" style="font-size:13.5px">Tenants see the networks for their space in their portal. Update a password here and it changes for them straight away.</p>
       ${nets.length ? `<div class="list">${nets.map(n => `<div><span><b class="mono">${esc(n.ssid)}</b><br><span class="muted" style="font-size:13px">${esc(applies(n.appliesTo))} · <span class="mono">${esc(n.password)}</span></span></span><span class="row" style="gap:6px"><button class="btn sm" data-act="wifi-edit" data-id="${esc(n.id)}">Edit</button><button class="btn sm danger" data-act="wifi-del" data-id="${esc(n.id)}">Remove</button></span></div>`).join('')}</div>` : '<p class="muted">No networks yet.</p>'}
@@ -1318,6 +1356,7 @@ async function refreshAdmin() {
   access = d.access || [];
   render();
   if (!mailState.checked) mailStatus();
+  if (!pushState.checked) checkPush();
 }
 async function loadAll() {
   try {
@@ -1382,7 +1421,7 @@ function setView(v) {
 function routeFromLocation() {
   const p = location.pathname.replace(/\/+$/, '') || '/', h = (location.hash || '').slice(1);
   const cat = Object.keys(CATS).find(k => CATS[k].path === p);
-  if (p === '/tenant' || p === '/landlord') view = p.slice(1);
+  if (p === '/tenant' || p === '/landlord') { view = p.slice(1); const t = new URLSearchParams(location.search).get('tab'); if (t) ltab = t; }
   else if (/^\/spaces\/[a-z0-9-]+$/.test(p)) { view = 'unit'; curUnit = p.split('/')[2]; }
   else if (cat) { view = 'cat'; curCat = cat; }
   else if (['tenant', 'landlord'].includes(h)) view = h;
@@ -1425,6 +1464,9 @@ const ACT = {
   'wifi-send': () => messageForm(),
   'prop-edit': () => propForm(),
   'lp-edit': () => lpForm(),
+  'push-on': () => enablePush(),
+  'push-off': () => disablePush(),
+  'push-test': async () => { try { const r = await api('POST', '/api/admin/push/test'); toast(r.sent ? 'Test sent. Check your notifications.' : 'No devices are set up yet.'); } catch (e) { toast(e.message); } },
   'mail-folder': d => { mailState.folder = d.f; mailState.list = null; loadMail(); },
   'mail-refresh': () => loadMail(),
   'mail-open': d => mailOpen(d.uid),

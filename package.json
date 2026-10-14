@@ -21,6 +21,7 @@
     "imapflow": "1.0.164",
     "mailparser": "3.7.1",
     "nodemailer": "6.9.15",
-    "pg": "8.13.1"
+    "pg": "8.13.1",
+    "web-push": "3.6.7"
   }
 }

@@ -11,6 +11,7 @@ const bcrypt = require('bcryptjs');
 const { createStore } = require('./src/store');
 const seed = require('./src/seed.json');
 const mail = require('./src/mail');
+const webpush = require('web-push');
 
 const PROD = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT || 3000;
@@ -227,6 +228,8 @@ function routes() {
     enq.createdAt = new Date().toISOString();
     await store.put('enquiries', newId(), enq);
     res.json({ status: enq.status });
+    { const u = units.find(x => x.id === enq.interest);
+      notifyLandlord({ title: `${enq.status === 'new' ? 'New request' : 'New waitlist sign-up'}: ${enq.name}`, body: `${enq.business} · ${u ? u.name : enq.interest === 'any' ? 'Any space' : enq.interest}${enq.start ? ` · from ${new Date(enq.start + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}`, url: '/landlord?tab=enquiries' }); }
     // Let the landlord know straight away (doesn't hold up the visitor).
     if (mail.enabled()) {
       const unit = units.find(u => u.id === enq.interest);
@@ -323,6 +326,26 @@ function routes() {
     const u = ID.test(req.params.id) && await store.userBy('tenantId', req.params.id);
     if (u) await store.deleteUser(u.id);
     res.json({ ok: true });
+  }));
+
+  /* phone notifications (web push to the installed app) */
+  admin.get('/push/key', (req, res) => res.json({ key: VAPID.publicKey }));
+  admin.post('/push/subscribe', wrap(async (req, res) => {
+    const sub = req.body && req.body.subscription;
+    if (!sub || typeof sub.endpoint !== 'string' || !/^https:\/\//.test(sub.endpoint) || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) return res.status(400).json({ error: 'That device couldn’t be registered.' });
+    const id = crypto.createHash('sha256').update(sub.endpoint).digest('hex').slice(0, 32);
+    await store.put('pushsubs', id, { endpoint: sub.endpoint, keys: { p256dh: String(sub.keys.p256dh), auth: String(sub.keys.auth) }, device: clean(req.body.device, 200), createdAt: new Date().toISOString() });
+    res.json({ ok: true, devices: (await store.list('pushsubs')).length });
+  }));
+  admin.post('/push/unsubscribe', wrap(async (req, res) => {
+    const ep = req.body && req.body.endpoint;
+    if (typeof ep === 'string') await store.del('pushsubs', crypto.createHash('sha256').update(ep).digest('hex').slice(0, 32));
+    res.json({ ok: true });
+  }));
+  admin.get('/push/devices', wrap(async (req, res) => res.json({ devices: (await store.list('pushsubs')).map(d => ({ device: d.device, createdAt: d.createdAt })) })));
+  admin.post('/push/test', wrap(async (req, res) => {
+    const sent = await notifyLandlord({ title: 'The Old Mill', body: 'Notifications are working. You’ll get one whenever someone requests a space.', url: '/landlord?tab=enquiries' });
+    res.json({ sent });
   }));
 
   /* landlord mailbox */
@@ -664,6 +687,24 @@ async function ensureLandlord() {
 
 // The secret that signs sign-in cookies. Uses SESSION_SECRET if set, otherwise makes one and keeps it in the database.
 let VIEW_SALT = 'oldmill-views';
+// Keys that let this site send push notifications, made once and kept in the database.
+let VAPID = { publicKey: '', privateKey: '' };
+async function setupPush() {
+  let k = await store.get('admin', 'vapid');
+  if (!k || !k.publicKey) { const g = webpush.generateVAPIDKeys(); k = { publicKey: g.publicKey, privateKey: g.privateKey }; await store.put('admin', 'vapid', k); }
+  VAPID = { publicKey: k.publicKey, privateKey: k.privateKey };
+  webpush.setVapidDetails(`mailto:${process.env.MAIL_USER || process.env.ADMIN_EMAIL || 'hello@theoldmillkineton.co.uk'}`, VAPID.publicKey, VAPID.privateKey);
+}
+// Sends to every device the landlord has turned notifications on for; forgets devices that have gone.
+async function notifyLandlord(msg) {
+  if (!VAPID.publicKey) return 0;
+  let sent = 0;
+  for (const s of await store.list('pushsubs')) {
+    try { await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, JSON.stringify(msg), { TTL: 86400, urgency: 'high' }); sent++; }
+    catch (e) { if (e.statusCode === 404 || e.statusCode === 410) await store.del('pushsubs', s.id); else console.warn('Push not sent:', e.statusCode || e.message); }
+  }
+  return sent;
+}
 async function sessionSecret() {
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
   const saved = await store.get('admin', 'session-secret');
@@ -773,6 +814,7 @@ async function main() {
   await migrate();
   await ensureLandlord();
   VIEW_SALT = 'views:' + (await sessionSecret());
+  await setupPush();
 
   app.use(session({
     name: 'oldmill.sid',
