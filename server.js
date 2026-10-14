@@ -591,6 +591,18 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: within 6 miles gets the local rate.');
   }
+  if (!done['2026-10-remove-work-photos']) {
+    // Take out photos showing ladders, tools or building work.
+    const bad = ["img/hoist-loft-1.jpg", "img/hoist-loft-2.jpg", "img/hoist-loft-4.jpg", "img/hoist-loft-5.jpg", "img/hoist-loft-6.jpg", "img/img-1508.jpg"];
+    for (const u of await store.list('units')) {
+      if (!Array.isArray(u.photos)) continue;
+      const keep = u.photos.filter(p => !(p && typeof p === 'object' && bad.includes(p.src)));
+      if (keep.length !== u.photos.length) await store.put('units', u.id, { ...strip(u), photos: keep });
+    }
+    done['2026-10-remove-work-photos'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: removed photos with ladders and building work.');
+  }
 }
 
 async function ensureLandlord() {
