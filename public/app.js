@@ -358,7 +358,15 @@ function textToFloors(t) {
   return floors;
 }
 
+// Count a visit to a space's page (once per page load; the server ignores the landlord and tenants).
+const viewedThisVisit = new Set();
+function recordView(id) {
+  if (!id || viewedThisVisit.has(id) || mode !== 'public') return;
+  viewedThisVisit.add(id);
+  fetch(`/api/view/${encodeURIComponent(id)}`, {method: 'POST', credentials: 'same-origin'}).catch(() => {});
+}
 function viewUnit() {
+  if (loaded) recordView(curUnit);
   const u = unitById(curUnit);
   if (!u) return `<div class="upage wrap"><button class="back" data-act="go-site">← All spaces</button><div class="empty">${!loaded ? 'Loading this space…' : 'That space could not be found.'}</div></div>`;
   const P = prop(), photos = photoList(u), let_ = u.status === 'let';
@@ -645,6 +653,15 @@ function viewLandlord() {
     ${body}
   </div>`;
 }
+function viewsPanel() {
+  const V = S.views || [], by = id => V.find(v => v.unitId === id) || {unique: 0, week: 0, total: 0, last: ''};
+  const rows = units().map(u => ({u, ...by(u.id)})).sort((a, b) => b.unique - a.unique || b.total - a.total);
+  return `<section class="panel"><h3>Who's looking</h3>
+    <p class="muted" style="font-size:13px">Different people who've opened each space's page. Each person counts once, however many times they look. Your own views and tenants' aren't counted.</p>
+    <div class="scroll"><table class="t num" style="min-width:0"><thead><tr><th>Space</th><th style="text-align:right">People</th><th style="text-align:right">Last 7 days</th><th style="text-align:right">Page views</th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td><b>${esc(r.u.name)}</b> <span class="pill s-${esc(r.u.status)}" style="font-size:11px">${STATUS[r.u.status] || ''}</span></td><td style="text-align:right"><b>${r.unique}</b></td><td style="text-align:right">${r.week}</td><td style="text-align:right" class="muted">${r.total}</td></tr>`).join('')}
+    </tbody></table></div></section>`;
+}
 function lOverview() {
   const U = units(), letN = U.filter(u => u.status === 'let').length;
   const roll = activeTenants().reduce((s, t) => s + Number(t.rent || 0), 0);
@@ -665,6 +682,7 @@ function lOverview() {
     </div>
     <div class="grid2">
       <section class="panel"><h3>Needs attention</h3>${attention.length ? `<div class="list">${attention.map(a => `<div><span>${a[0]}</span>${a[1]}</div>`).join('')}</div>` : '<p class="muted">Nothing waiting on you.</p>'}</section>
+      ${viewsPanel()}
       <section class="panel"><div class="row" style="justify-content:space-between"><h3>Spaces at a glance</h3><button type="button" class="btn sm" data-act="map-open">Enlarge map</button></div><div style="margin:-4px">${planSVG(U)}</div></section>
     </div>`;
 }
@@ -1217,6 +1235,7 @@ function passwordForm() {
 }
 async function refreshAdmin() {
   const d = await api('GET', '/api/admin/data');
+  S.views = d.views || [];
   Object.assign(S, {property: d.property, wifi: d.wifi, units: d.units, tenants: d.tenants, invoices: d.invoices, messages: d.messages, enquiries: d.enquiries, outbox: d.outbox});
   access = d.access || [];
   render();

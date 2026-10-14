@@ -173,6 +173,24 @@ function routes() {
     res.json({ property: publicProperty(await property()), units: (await store.list('units')).map(publicUnit) });
   }));
 
+  // Unique visitors per space. Stores a salted hash of the visitor's IP, never the IP itself.
+  const viewLimiter = rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false, message: { ok: true } });
+  const BOT = /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|curl|wget|python|headless/i;
+  api.post('/view/:unitId', viewLimiter, wrap(async (req, res) => {
+    res.json({ ok: true });
+    const id = req.params.unitId;
+    if (!ID.test(id) || BOT.test(req.get('user-agent') || '') || req.user) return; // ignore robots and signed-in landlord/tenants
+    if (!(await store.get('units', id))) return;
+    const visitor = crypto.createHmac('sha256', VIEW_SALT).update(req.ip || '').digest('hex').slice(0, 20);
+    const now = new Date().toISOString();
+    const doc = (await store.get('views', id)) || { id, visitors: {}, total: 0 };
+    const { id: _i, ...v } = doc;
+    v.visitors = v.visitors || {};
+    v.visitors[visitor] = { first: (v.visitors[visitor] && v.visitors[visitor].first) || now, last: now };
+    v.total = (v.total || 0) + 1;
+    await store.put('views', id, v);
+  }));
+
   api.post('/enquiries', enquiryLimiter, wrap(async (req, res) => {
     const b = req.body || {};
     if (b.website) return res.json({ status: 'new' }); // honeypot field: bots fill it, people never see it
@@ -245,6 +263,11 @@ function routes() {
   admin.get('/data', wrap(async (req, res) => {
     const out = { property: await property(), wifi: await wifi() };
     for (const c of ADMIN_COLLECTIONS) out[c] = await store.list(c);
+    const week = Date.now() - 7 * 864e5;
+    out.views = (await store.list('views')).map(v => {
+      const vis = Object.values(v.visitors || {});
+      return { unitId: v.id, unique: vis.length, week: vis.filter(x => Date.parse(x.last) > week).length, total: v.total || 0, last: vis.reduce((m, x) => (x.last > m ? x.last : m), '') };
+    });
     out.access = (await store.listUsers()).filter(u => u.role === 'tenant').map(u => ({
       tenantId: u.tenantId, email: u.email, active: !!u.passwordHash, inviteExpires: u.inviteExpires
     }));
@@ -631,6 +654,7 @@ async function ensureLandlord() {
 }
 
 // The secret that signs sign-in cookies. Uses SESSION_SECRET if set, otherwise makes one and keeps it in the database.
+let VIEW_SALT = 'oldmill-views';
 async function sessionSecret() {
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
   const saved = await store.get('admin', 'session-secret');
@@ -645,6 +669,7 @@ async function main() {
   await seedIfEmpty();
   await migrate();
   await ensureLandlord();
+  VIEW_SALT = 'views:' + (await sessionSecret());
 
   app.use(session({
     name: 'oldmill.sid',
