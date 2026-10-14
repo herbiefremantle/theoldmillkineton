@@ -456,11 +456,11 @@ function viewSite() {
 
   <section class="section wrap" id="siteplan">
     <div class="two" style="align-items:center">
-      <div class="prose"><p class="eyebrow">Site plan</p><h2 class="h2">Find your space</h2>
-        <p>The Mill Rooms and Units 2 to 5 are reached through the main entrance on Mill Lane, into a shared entrance hall with a small kitchen and toilets. The Mill Rooms are four separate rooms over three floors, up the stairs from the hall, and each one is let on its own. Unit 6 has its own entrance at the front. The Stable Block is reached through the metal gates into the yard. Units 3 and 4 also have loading doors onto Mill Lane.</p><p>There are also two small rooms, 5A and 5B, off the hall, which work for storage or anything else your business needs, and two garages, G1 and G2.</p><p>Select any unit to see photos, measurements and prices.</p></div>
       <figure class="plan-card">${U.length ? planSVG(U) : '<div class="empty">No spaces listed yet.</div>'}
         <figcaption><span class="key"><i style="background:var(--accent)"></i>Available</span><span class="key"><i style="background:var(--brass)"></i>Coming soon</span><span class="key"><i style="background:var(--let)"></i>Let</span><span>Not to scale.</span><button type="button" class="btn sm" style="margin-left:auto" data-act="map-open">Enlarge map</button></figcaption>
       </figure>
+      <div class="prose"><p class="eyebrow">Site plan</p><h2 class="h2">Find your space</h2>
+        <p>The Mill Rooms and Units 2 to 5 are reached through the main entrance on Mill Lane, into a shared entrance hall with a small kitchen and toilets. The Mill Rooms are four separate rooms over three floors, up the stairs from the hall, and each one is let on its own. Unit 6 has its own entrance at the front. The Stable Block is reached through the metal gates into the yard. Units 3 and 4 also have loading doors onto Mill Lane.</p><p>There are also two small rooms, 5A and 5B, off the hall, which work for storage or anything else your business needs, and two garages, G1 and G2.</p><p>Select any unit to see photos, measurements and prices.</p></div>
     </div>
   </section>
 
