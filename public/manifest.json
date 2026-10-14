@@ -13,7 +13,7 @@
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
   ],
   "shortcuts": [
-    { "name": "Tenant portal", "url": "/#tenant", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Landlord", "url": "/#landlord", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Tenant portal", "url": "/tenant", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Landlord", "url": "/landlord", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

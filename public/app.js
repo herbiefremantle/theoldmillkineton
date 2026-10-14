@@ -16,12 +16,72 @@ const INCLUDES = ['Internet & Wi-Fi', 'Electricity', 'Water'];
 // mode: 'public' (visitor), 'tenant' (signed-in tenant) or 'landlord'. me = the signed-in account.
 let mode = 'public', me = null, loaded = false, access = [];
 let S = {property: null, wifi: {networks: []}, units: [], tenants: [], invoices: [], messages: [], enquiries: [], outbox: []};
-let view = 'site', siteFilter = 'all', ltab = 'overview', curTenant = null, enqFilter = 'open', curUnit = null, curPhoto = 0;
+let view = 'site', curCat = 'rooms', siteFilter = 'all', ltab = 'overview', curTenant = null, enqFilter = 'open', curUnit = null, curPhoto = 0;
 const COLS = ['units', 'tenants', 'invoices', 'messages', 'enquiries', 'outbox'];
 
-const prop = () => Object.assign({name:'The Old Mill', tagline:'', address:'', description:'', features:[], email:'', phone:'', paymentNote:''}, S.property || {});
+const prop = () => Object.assign({name:'The Old Mill', tagline:'', address:'', postcode:'', county:'', description:'', features:[], email:'', phone:'', paymentNote:''}, S.property || {});
 const units = () => [...S.units].sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || String(a.code).localeCompare(String(b.code)));
 const unitById = id => S.units.find(u => u.id === id);
+/* ---------- pages, addresses and SEO (shared with the server, which renders these pages for search engines) ---------- */
+const slugOf = u => String((u && (u.name || u.code || u.id)) || '').toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const findUnit = key => S.units.find(u => u.id === key) || S.units.find(u => slugOf(u) === key);
+const unitPath = u => '/spaces/' + slugOf(u);
+// Draft copy: edit freely.
+const CATS = {
+  rooms: {path: '/rooms', name: 'Offices & rooms', has: u => u.group === 'unit1' || ['2', '5a', '5b'].includes(u.id),
+    h1: 'Offices and rooms to let in Kineton', title: 'Offices & Rooms to Let in Kineton | The Old Mill',
+    description: 'Offices and rooms to let at The Old Mill, Mill Lane, Kineton. One monthly price with internet, electricity and water included. Request a viewing online.',
+    intro: ['Private offices and rooms at The Old Mill on Mill Lane, Kineton: four Mill Rooms in the mill building, Unit 2 and two small rooms off the entrance hall.', 'They are let on one monthly price that includes internet, electricity, water and the service charge, on a simple licence with a 3-month minimum. Use them as an office, a treatment room, a studio or a craft room, or for whatever your business needs.']},
+  workshops: {path: '/workshops', name: 'Workshops', has: u => ['3', '4', '5', '6', '7'].includes(u.id),
+    h1: 'Workshops and units to let in Kineton', title: 'Workshops & Units to Let in Kineton | The Old Mill',
+    description: 'Workshops and commercial units to let at The Old Mill, Mill Lane, Kineton, with loading doors onto Mill Lane. 12-month minimum leases. Request a viewing.',
+    intro: ['Workshops, a warehouse and commercial units at The Old Mill on Mill Lane, Kineton. Unit 3 has wooden double doors and Unit 4 has metal shutters onto Mill Lane for loading.', 'Units are let on a lease with a 12-month minimum term. Each unit shows its rent and monthly service charge, and tenants pay their own electricity and business rates. Small businesses may qualify for Small Business Rate Relief.']},
+  storage: {path: '/storage', name: 'Storage', has: u => ['g1', 'g2', '5a', '5b', '1d'].includes(u.id),
+    h1: 'Storage and garages to let in Kineton', title: 'Storage & Garages to Let in Kineton | The Old Mill',
+    description: 'Storage to let at The Old Mill, Mill Lane, Kineton: small storage rooms, garages and a top-floor storage area. Request a viewing or join the waitlist.',
+    intro: ['Storage at The Old Mill on Mill Lane, Kineton, from small rooms off the shared entrance hall to two garages and the storage floor that comes with Hoist Loft.', 'Good for stock, equipment, archives or anything your business needs to keep close by.']}
+};
+const catOf = u => Object.keys(CATS).find(k => CATS[k].has(u)) || 'rooms';
+const SITE_TITLE = 'Rooms, Workshops & Storage to Let in Kineton | The Old Mill';
+const clip = (t, n) => { t = String(t).replace(/\s+/g, ' ').trim(); if (t.length <= n) return t; const c = t.slice(0, n - 1); return c.slice(0, c.lastIndexOf(' ')).replace(/[,;:.\-–]+$/, '') + '…'; };
+function pageMeta() {
+  const P = prop();
+  if (view === 'cat') { const c = CATS[curCat]; return {title: c.title, description: c.description, path: c.path, crumbs: [['Home', '/'], [c.name, c.path]]}; }
+  if (view === 'unit') {
+    const u = findUnit(curUnit);
+    if (!u) return {title: 'Space not found | The Old Mill', description: 'This space could not be found. See all rooms, workshops and storage to let at The Old Mill, Kineton.', path: '/spaces/' + curUnit, notFound: true};
+    const c = CATS[catOf(u)], type = String(u.type || 'Space');
+    const t1 = `${u.name}: ${type} to Let in Kineton | The Old Mill`, t2 = `${u.name} to Let in Kineton | The Old Mill`;
+    const price = u.status === 'let' ? 'Currently let: join the waitlist.' : u.rent ? `${gbp(priceFor(u, 'kineton'))} a month${u.inclusive ? ' with bills included' : ''}.` : '';
+    return {title: t1.length <= 60 ? t1 : t2.length <= 60 ? t2 : clip(`${u.name} | The Old Mill`, 60),
+      description: clip(`${u.name} at The Old Mill, Mill Lane, Kineton: ${type.toLowerCase()}${u.size ? `, ${Number(u.size).toLocaleString('en-GB')} sq ft` : ''}. ${price} Request a viewing online.`, 155),
+      path: unitPath(u), image: (photoList(u).find(p => p.src) || {}).src, crumbs: [['Home', '/'], [c.name, c.path], [u.name, unitPath(u)]]};
+  }
+  if (view === 'tenant') return {title: 'Tenant portal | The Old Mill', path: '/tenant', noindex: true};
+  if (view === 'landlord') return {title: 'Landlord | The Old Mill', path: '/landlord', noindex: true};
+  if (view === 'invite') return {title: 'Set up your account | The Old Mill', path: '/invite', noindex: true};
+  const priced = units().filter(u => u.status !== 'let' && u.inclusive && u.rent && !['5a', '5b'].includes(u.id)).map(u => Number(u.rent));
+  return {title: SITE_TITLE, path: '/',
+    description: clip(`Offices, rooms, workshops and storage to let at The Old Mill, Mill Lane, Kineton.${priced.length ? ` Offices from ${gbp(Math.min(...priced))} a month, bills included.` : ''} Request a viewing.`, 155)};
+}
+function crumbsHTML(items) {
+  return `<nav class="crumbs" aria-label="Breadcrumb">${items.map(([name, href], i) => i === items.length - 1 ? `<span aria-current="page">${esc(name)}</span>` : `<a href="${href}" data-act="go" data-href="${href}">${esc(name)}</a>`).join(' <span aria-hidden="true">›</span> ')}</nav>`;
+}
+function catLinksHTML(skip) {
+  return `<nav class="filters" aria-label="Browse by type">${Object.entries(CATS).filter(([k]) => k !== skip).map(([k, c]) => `<a class="chiplink" href="${c.path}" data-act="go" data-href="${c.path}">${esc(c.name)}</a>`).join('')}<a class="chiplink" href="/#spaces" data-act="go" data-href="/" data-scroll="spaces">All spaces</a></nav>`;
+}
+function locationHTML() {
+  const P = prop(), full = [P.name, P.address, P.county, P.postcode].filter(Boolean).join(', ');
+  return `<section class="usec" id="location"><h2>Where to find us</h2>
+    <p>${esc(full)}. The main entrance is on Mill Lane. Viewings are by appointment.</p>
+    <p><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(full)}" target="_blank" rel="noopener">Open in Google Maps</a></p></section>`;
+}
+// Photos: modern WebP (a small and a large size) with the original JPEG as a fallback.
+const pictureHTML = (src, alt, sizes, attrs = '') => {
+  if (!/^img\/[\w-]+\.jpe?g$/i.test(src)) return `<img src="${esc(src)}" alt="${esc(alt)}" ${attrs}>`;
+  const base = src.replace(/\.jpe?g$/i, '');
+  return `<picture><source type="image/webp" srcset="${base}-600.webp 600w, ${base}.webp 1400w" sizes="${sizes}"><img src="${esc(src)}" alt="${esc(alt)}" ${attrs}></picture>`;
+};
 const tenantById = id => S.tenants.find(t => t.id === id);
 const activeTenants = () => S.tenants.filter(t => t.status !== 'former');
 const tenantInUnit = uId => activeTenants().find(t => t.unitId === uId);
@@ -92,7 +152,7 @@ const photoList = u => (u.photos && u.photos.length ? u.photos : ['Photo']).map(
 const ph = (p, cls = '', sub = 'Photo coming soon') => {
   if (typeof p === 'string') p = {caption: p, src: ''};
   return p.src
-    ? `<div class="ph has-img ${cls}"><img src="${esc(p.src)}" alt="${esc(p.caption)}" loading="lazy"></div>`
+    ? `<div class="ph has-img ${cls}">${pictureHTML(p.src, p.caption, cls === 'main' ? '(max-width: 900px) 92vw, 760px' : sub === '' && cls === '' ? '(max-width: 700px) 92vw, 380px' : '160px', 'loading="lazy"')}</div>`
     : `<div class="ph ${cls}" role="img" aria-label="Placeholder for photo: ${esc(p.caption)}"><span><b>${esc(p.caption)}</b>${sub ? esc(sub) : ''}</span></div>`;
 };
 const exampleChip = r =>r && r.example ? ' <span class="chip">Example</span>' : '';
@@ -290,14 +350,14 @@ function unitCard(u) {
   const tiersHTML = '';
   return `<article class="ucard">
     ${ph(photoList(u)[0], '', '')}
-    <div class="ucard-top"><div><div class="ucode"${u.shortName ? ' style="font-size:30px;line-height:1"' : ''}>${esc(u.shortName || u.code)}</div><div class="utype">${esc(u.type)}</div></div><span class="pill s-${esc(u.status)}">${STATUS[u.status] || esc(u.status)}</span></div>
+    <div class="ucard-top"><div><h3 class="ucode"${u.shortName ? ' style="font-size:30px;line-height:1"' : ''}><a href="${unitPath(u)}" data-act="unit" data-id="${esc(u.id)}">${esc(u.shortName || u.code)}</a></h3><div class="utype">${esc(u.type)}</div></div><span class="pill s-${esc(u.status)}">${STATUS[u.status] || esc(u.status)}</span></div>
     <div class="facts num"><span><b>${u.size ? Number(u.size).toLocaleString('en-GB') + ' sq ft' : 'Size on request'}</b></span>${priceHTML}</div>
     ${tiersHTML}
     ${reduced(u) ? `<div class="row" style="gap:8px;font-size:13.5px"><span class="pill s-soon">Reduced</span><span>Was <s>${gbp(priceFor({...u, rent: u.wasRent}, priceTier))}</s>, now <b>${gbp(priceFor(u, priceTier))}</b></span></div>` : ''}
     <div class="muted num" style="font-size:13.5px">${u.status === 'let' ? (u.serviceCharge === 'included' ? 'Service charge included' : u.serviceCharge === 'extra' ? 'Service charge extra' : 'No service charge') : esc(scLine(u))} · ${u.inclusive ? 'Bills included' : 'Bills paid by tenant'}</div>
     <div class="muted" style="font-size:13px">Deposit ${depositText(u)} · ${TERMS[termOf(u)].short}</div>
     ${u.status === 'soon' && u.availableFrom ? `<div style="font-size:13.5px">Available from <b>${fmtDate(u.availableFrom)}</b></div>` : ''}
-    <div class="row"><button class="btn ghost sm" data-act="unit" data-id="${esc(u.id)}">View details</button>${btn}</div>
+    <div class="row"><a class="btn ghost sm" href="${unitPath(u)}" data-act="unit" data-id="${esc(u.id)}" aria-label="View details of ${esc(u.name)}">View details</a>${btn}</div>
   </article>`;
 }
 function floorPlan(u) {
@@ -365,10 +425,24 @@ function recordView(id) {
   viewedThisVisit.add(id);
   fetch(`/api/view/${encodeURIComponent(id)}`, {method: 'POST', credentials: 'same-origin'}).catch(() => {});
 }
+function viewCategory() {
+  if (!loaded) return '<div class="dash wrap"><div class="empty">Loading…</div></div>';
+  const c = CATS[curCat], list = units().filter(c.has);
+  return `<div class="upage wrap">
+    ${crumbsHTML(pageMeta().crumbs)}
+    <div class="uhead"><div><p class="eyebrow">${esc(prop().name)} · Mill Lane, Kineton</p><h1 class="sign" style="font-size:clamp(38px,6vw,68px)">${esc(c.h1)}</h1></div></div>
+    <div class="prose" style="max-width:68ch">${c.intro.map(p => `<p>${esc(p)}</p>`).join('')}</div>
+    <div class="cards">${list.map(unitCard).join('')}</div>
+    <div class="row" style="gap:8px"><span class="muted" style="font-size:13.5px">Also at The Old Mill</span>${catLinksHTML(curCat)}</div>
+    ${locationHTML()}
+    <div class="cta"><div style="display:grid;gap:8px;min-width:0"><h2 class="h2">Interested in a space?</h2><p>Viewings by appointment. Request a space that's free now, or join the waitlist and we'll message you when one comes up.</p></div><button class="btn gold" data-act="enquire">Request a space</button></div>
+  </div>`;
+}
 function viewUnit() {
+  const u = findUnit(curUnit);
+  if (u) curUnit = u.id;
   if (loaded) recordView(curUnit);
-  const u = unitById(curUnit);
-  if (!u) return `<div class="upage wrap"><button class="back" data-act="go-site">← All spaces</button><div class="empty">${!loaded ? 'Loading this space…' : 'That space could not be found.'}</div></div>`;
+  if (!u) return `<div class="upage wrap">${crumbsHTML([['Home', '/'], ['Not found', '']])}<div class="empty">${!loaded ? 'Loading this space…' : 'That space could not be found.'}</div></div>`;
   const P = prop(), photos = photoList(u), let_ = u.status === 'let';
   if (curPhoto >= photos.length) curPhoto = 0;
   const others = units().filter(x => x.id !== u.id && x.status !== 'let').slice(0, 3);
@@ -376,7 +450,7 @@ function viewUnit() {
     ? `<button class="btn primary" style="justify-content:center" data-act="enquire" data-unit="${esc(u.id)}" data-wait="1">Notify me when available</button>`
     : `<button class="btn primary" style="justify-content:center" data-act="enquire" data-unit="${esc(u.id)}">Request this space</button>`;
   return `<div class="upage wrap">
-    <button class="back" data-act="go-site">← All spaces</button>
+    ${crumbsHTML(pageMeta().crumbs)}
     <div class="uhead"><div><p class="eyebrow">${esc(u.type)} · ${esc(P.name)}</p><h1 class="sign" style="font-size:clamp(48px,7vw,84px)">${esc(u.name)}</h1></div>
       <span class="pill s-${esc(u.status)}" style="font-size:14px">${STATUS[u.status]}${u.status === 'soon' && u.availableFrom ? ' · from ' + fmtDate(u.availableFrom) : ''}</span></div>
     <div class="ulayout">
@@ -423,7 +497,7 @@ function viewUnit() {
           <div><span class="muted">Pay by</span><b>${esc((prop().paymentMethods || ['dd', 'bank']).map(k => PAY[k]).join(' or '))}</b></div>
         </div>
         ${cta}
-        ${others.length ? `<div style="display:grid;gap:6px;margin-top:6px"><span class="eyebrow">Other spaces</span>${others.map(o => `<button class="btn ghost sm" style="justify-content:space-between" data-act="unit" data-id="${esc(o.id)}"><span>${esc(o.name)}</span><span class="muted">${STATUS[o.status]}</span></button>`).join('')}</div>` : ''}
+        ${others.length ? `<div style="display:grid;gap:6px;margin-top:6px"><span class="eyebrow">Other spaces</span>${others.map(o => `<a class="btn ghost sm" style="justify-content:space-between" href="${unitPath(o)}" data-act="unit" data-id="${esc(o.id)}"><span>${esc(o.name)}</span><span class="muted">${STATUS[o.status]}</span></a>`).join('')}</div>` : ''}
       </aside>
     </div>
   </div>`;
@@ -447,7 +521,7 @@ function viewSite() {
       </div>
       <div class="row"><button class="btn primary" data-act="enquire">Request a space</button><button class="btn ghost" data-act="scroll" data-target="spaces">See all spaces</button></div>
     </div>
-    <figure class="hero-photo"><img src="img/the-old-mill.jpg" alt="The Old Mill, a three-storey red-brick mill building with green window frames"><figcaption>The mill building${P.address ? ', ' + esc(P.address) : ''}</figcaption></figure>
+    <figure class="hero-photo">${pictureHTML('img/the-old-mill.jpg', 'The Old Mill, a three-storey red-brick mill building with green window frames, on Mill Lane, Kineton', '(max-width: 900px) 92vw, 620px', 'fetchpriority="high" width="1600" height="914"')}<figcaption>The mill building${P.address ? ', ' + esc(P.address) : ''}</figcaption></figure>
   </section>
 
   <section class="section wrap" id="about">
@@ -456,6 +530,7 @@ function viewSite() {
         <p class="eyebrow">Welcome</p>
         <h2 class="h2">Welcome to ${esc(P.name)}</h2>
         ${P.description.split(/\n\s*\n/).filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('')}
+        <div class="row" style="gap:8px;margin-top:6px"><span class="muted" style="font-size:13.5px">Browse by type</span>${catLinksHTML('').replace(/<a class="chiplink" href="\/#spaces"[^]*?<\/a>/, '')}</div>
         <div class="filters" style="margin-top:6px"><span class="muted" style="font-size:13.5px;align-self:center">Jump to</span>
           <button type="button" data-act="scroll" data-target="spaces">The spaces</button>
           <button type="button" data-act="scroll" data-target="siteplan">Site plan</button>
@@ -485,7 +560,7 @@ function viewSite() {
       <p>${localMerged() ? `The prices shown on each space are for businesses based in Kineton or within ${esc(localPricing().nearbyMiles)} miles, such as Tysoe and Wellesbourne.` : 'The prices shown on each space are our Kineton rates.'} We'd love The Old Mill to be full of local businesses, with people who can walk or cycle to work and keep trade local.</p>
       <p>Businesses from further afield are just as welcome. Choose <b>Further afield</b> at the top of the page to see their prices.</p>
     </div>
-    <figure class="hero-photo"><img src="img/hatch-1.jpg" alt="Hatch, a bright first floor room with timber beams, two windows and the hatch in the ceiling" loading="lazy" style="aspect-ratio:3/2;object-position:50% 50%"><figcaption>Hatch, first floor</figcaption></figure>
+    <figure class="hero-photo">${pictureHTML('img/hatch-1.jpg', 'Hatch, a bright first floor room with timber beams, two windows and the hatch in the ceiling', '(max-width: 900px) 92vw, 560px', 'loading="lazy" width="1400" height="1050" style="aspect-ratio:3/2;object-position:50% 50%"')}<figcaption>Hatch, first floor</figcaption></figure>
     </div>
   </section>` : ''}
 
@@ -526,6 +601,8 @@ function viewSite() {
     <p class="muted" style="font-size:14px;margin-top:14px">Rent is paid monthly in advance by Direct Debit or bank transfer. Viewings are by appointment. Deposits are held separately and returned within a month of leaving, once the space has been checked.</p>
   </section>
 
+  <section class="section wrap">${locationHTML()}</section>
+
   <section class="section wrap">
     <div class="cta">
       <div class="row" style="gap:20px;flex-wrap:nowrap;min-width:0"><img class="logo" src="img/logo-440.png" alt="The Old Mill, Kineton logo">
@@ -536,7 +613,7 @@ function viewSite() {
       <button class="btn gold" data-act="enquire">Request a space</button>
     </div>
   </section>
-  <footer class="foot wrap">${esc(P.name)}${P.address ? ' · ' + esc(P.address) : ''} · <button type="button" class="linkish" data-view="tenant">Tenant sign in</button> · <button type="button" class="linkish" data-view="landlord">Landlord sign in</button>${isInstalled() ? '' : ' · <button type="button" class="linkish" data-act="get-app">Get the app</button>'}</footer>`;
+  <footer class="foot wrap">${esc(P.name)}${P.address ? ' · ' + esc(P.address) : ''}${P.postcode ? ' ' + esc(P.postcode) : ''} · ${Object.values(CATS).map(c => `<a href="${c.path}" data-act="go" data-href="${c.path}">${esc(c.name)}</a>`).join(' · ')} · <button type="button" class="linkish" data-view="tenant">Tenant sign in</button> · <button type="button" class="linkish" data-view="landlord">Landlord sign in</button>${isInstalled() ? '' : ' · <button type="button" class="linkish" data-act="get-app">Get the app</button>'}</footer>`;
 }
 function interestOptions() {
   return [['any', 'Any space'], ['unit1', 'Any Mill Room (all inclusive)'], ['large', 'Any of Units 2–6 or the Stable Block'], ...units().map(u => [u.id, `${u.name} · ${STATUS[u.status]}`])];
@@ -1006,6 +1083,7 @@ function propForm() {
     title: 'Property details',
     fields: [
       {id:'name', label:'Property name', value:P.name, required:true}, {id:'address', label:'Address', value:P.address},
+      {id:'postcode', label:'Postcode', value:P.postcode}, {id:'county', label:'County', value:P.county},
       {id:'email', label:'Contact email', type:'email', value:P.email}, {id:'phone', label:'Phone', type:'tel', value:P.phone},
       {id:'tagline', label:'Tagline', value:P.tagline, full:true},
       {id:'description', label:'About the property', type:'textarea', rows:5, full:true, value:P.description, hint:'Leave a blank line between paragraphs'},
@@ -1278,28 +1356,44 @@ document.addEventListener('submit', async e => {
     if (p1 !== p2) { err.textContent = 'The two passwords don’t match. Type them again.'; err.hidden = false; return; }
     try {
       await api('POST', `/api/invite/${encodeURIComponent(inviteState.token)}`, {password: p1});
-      location.href = '/#tenant';
+      location.href = '/tenant';
     } catch (x) { err.textContent = x.message; err.hidden = false; }
   }
 });
 
 /* ---------- render & events ---------- */
 function render() {
-  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === (view === 'unit' ? 'site' : view)));
+  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === (view === 'unit' || view === 'cat' ? 'site' : view)));
   $('#brand-name').textContent = prop().name;
-  const tb = $('#tierbar'); if (tb) { const show = loaded && (view === 'site' || view === 'unit'); tb.innerHTML = show ? priceBar() : ''; tb.hidden = !show || !tb.innerHTML; }
+  const tb = $('#tierbar'); if (tb) { const show = loaded && (view === 'site' || view === 'unit' || view === 'cat'); tb.innerHTML = show ? priceBar() : ''; tb.hidden = !show || !tb.innerHTML; }
   const y = scrollY;
   const lb = document.querySelector('.seg button[data-view="landlord"]'); if (lb) lb.hidden = mode !== 'landlord' && view !== 'landlord';
-  $('#app').innerHTML = view === 'invite' ? viewInvite() : view === 'tenant' ? viewTenant() : view === 'landlord' ? viewLandlord() : view === 'unit' ? viewUnit() : viewSite();
+  $('#app').innerHTML = view === 'invite' ? viewInvite() : view === 'tenant' ? viewTenant() : view === 'landlord' ? viewLandlord() : view === 'unit' ? viewUnit() : view === 'cat' ? viewCategory() : viewSite();
+  if (loaded || view !== 'unit') { const m = pageMeta(); document.title = m.title; const d = document.querySelector('meta[name=description]'); if (d && m.description) d.setAttribute('content', m.description);
+    if (view !== 'invite' && location.pathname !== m.path && !m.notFound) try { history.replaceState(null, '', m.path + (view === 'site' ? location.hash.replace(/^#(site|tenant|landlord|unit-.*)$/, '') : '')); } catch (e) {} }
   scrollTo(0, y);
 }
 function setView(v) {
-  view = v; try { history.replaceState(null, '', '/#' + (v === 'unit' ? 'unit-' + curUnit : v)); } catch (e) {}
+  view = v;
+  try { const p = pageMeta().path; if (p !== location.pathname) history.pushState(null, '', p); } catch (e) {}
   render(); scrollTo(0, 0);
 }
+// Reads the page from the web address: /, /rooms, /workshops, /storage, /spaces/<name>, /tenant, /landlord (old #links still work).
+function routeFromLocation() {
+  const p = location.pathname.replace(/\/+$/, '') || '/', h = (location.hash || '').slice(1);
+  const cat = Object.keys(CATS).find(k => CATS[k].path === p);
+  if (p === '/tenant' || p === '/landlord') view = p.slice(1);
+  else if (/^\/spaces\/[a-z0-9-]+$/.test(p)) { view = 'unit'; curUnit = p.split('/')[2]; }
+  else if (cat) { view = 'cat'; curCat = cat; }
+  else if (['tenant', 'landlord'].includes(h)) view = h;
+  else if (/^unit-[a-z0-9]+$/.test(h)) { view = 'unit'; curUnit = h.slice(5); }
+  else view = 'site';
+}
+window.addEventListener('popstate', () => { if (view === 'invite') return; routeFromLocation(); curPhoto = 0; render(); });
 const ACT = {
   enquire: d => enquireForm(d.unit, d.wait),
   unit: d => { closeModal(); curUnit = d.id; curPhoto = 0; setView('unit'); },
+  go: d => { closeModal(); const p = d.href || '/', cat = Object.keys(CATS).find(k => CATS[k].path === p); if (cat) { curCat = cat; setView('cat'); } else { setView('site'); if (d.scroll) setTimeout(() => document.getElementById(d.scroll)?.scrollIntoView(), 50); } },
   'go-site': () => { setView('site'); document.getElementById('spaces')?.scrollIntoView(); },
   photo: d => { curPhoto = Number(d.i); render(); },
   scroll: d => document.getElementById(d.target)?.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}),
@@ -1356,6 +1450,7 @@ document.addEventListener('click', e => {
   const nav = e.target.closest('[data-view]'); if (nav) { setView(nav.dataset.view); return; }
   if (e.target === $('#modal')) { closeModal(); return; }
   const el = e.target.closest('[data-act]'); if (!el || el.tagName === 'SELECT') return;
+  if (el.tagName === 'A' && (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1)) return;
   const fn = ACT[el.dataset.act]; if (fn) { e.preventDefault(); Promise.resolve(fn(el.dataset)).catch(() => {}); }
 });
 document.addEventListener('change', e => {
@@ -1385,9 +1480,9 @@ document.addEventListener('keydown', e => {
       .then(r => { inviteState = {token, email: r.email}; render(); })
       .catch(e => { inviteState = {error: e.message}; render(); });
   }
-  else if (['site', 'tenant', 'landlord'].includes(h)) view = h;
-  else if (/^unit-[a-z0-9]+$/.test(h)) { view = 'unit'; curUnit = h.slice(5); }
-  render();
+  else routeFromLocation();
+  // The server sends public pages already filled in; keep that on screen until the live data arrives.
+  if (!document.getElementById('app').hasAttribute('data-ssr')) render();
   loadAll();
 })();
 

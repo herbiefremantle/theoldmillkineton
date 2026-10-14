@@ -1,5 +1,7 @@
 // The Old Mill: public website, tenant portal and landlord admin in one small Express app.
 const path = require('path');
+const fs = require('fs');
+const ssr = require('./src/ssr');
 const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
@@ -66,7 +68,7 @@ function publicProperty(p) {
   return out;
 }
 // Distance from The Old Mill (Mill Lane, Kineton) to a UK postcode, via the free postcodes.io lookup.
-const MILL = { lat: 52.1572, lng: -1.5095 };
+const MILL = { lat: 52.157053, lng: -1.506842 }; // CV35 0LA
 async function milesFromMill(postcode) {
   try {
     const r = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`, { signal: AbortSignal.timeout(3000) });
@@ -633,6 +635,13 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: removed Unit 5 corner photo.');
   }
+  if (!done['2026-10-postcode']) {
+    const p = await store.get('site', 'property');
+    if (p) { const d = strip(p); if (!d.postcode) d.postcode = 'CV35 0LA'; if (!d.county) d.county = 'Warwickshire'; await store.put('site', 'property', d); }
+    done['2026-10-postcode'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: postcode CV35 0LA.');
+  }
 }
 
 async function ensureLandlord() {
@@ -664,6 +673,100 @@ async function sessionSecret() {
   return value;
 }
 
+/* ---------- public pages, SEO and crawl files ---------- */
+const BASE = (process.env.PUBLIC_URL || 'https://www.theoldmillkineton.co.uk').replace(/\/$/, '');
+const BASE_HOST = new URL(BASE).hostname;
+const escHtml = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ldJson = obj => `<script type="application/ld+json">${JSON.stringify(obj).replace(/</g, '\\u003c')}</script>`;
+
+async function publicState() {
+  const units = (await store.list('units')).map(publicUnit);
+  return { S: { property: publicProperty(await property()), units, wifi: { networks: [] }, tenants: [], invoices: [], messages: [], enquiries: [], outbox: [], views: [] } };
+}
+
+function localBusiness(P, units) {
+  const prices = units.filter(u => u.status !== 'let' && u.rent).map(u => Number(u.rent));
+  const parts = String(P.address || '').split(',').map(x => x.trim()).filter(Boolean);
+  const phone = String(P.phone || '').replace(/\s+/g, '');
+  return {
+    '@context': 'https://schema.org', '@type': 'LocalBusiness', '@id': `${BASE}/#business`,
+    name: P.name || 'The Old Mill', url: `${BASE}/`,
+    description: 'Offices, rooms, workshops and storage to let at The Old Mill, Mill Lane, Kineton.',
+    image: [`${BASE}/img/the-old-mill.jpg`], logo: `${BASE}/img/logo-440.png`,
+    ...(phone ? { telephone: phone.replace(/^0/, '+44') } : {}),
+    ...(P.email ? { email: P.email } : {}),
+    address: { '@type': 'PostalAddress', streetAddress: parts[0] || 'Mill Lane', addressLocality: parts[1] || 'Kineton', ...(P.county ? { addressRegion: P.county } : {}), ...(P.postcode ? { postalCode: P.postcode } : {}), addressCountry: 'GB' },
+    ...(P.postcode ? { geo: { '@type': 'GeoCoordinates', latitude: MILL.lat, longitude: MILL.lng } } : {}),
+    areaServed: 'Kineton, Warwickshire',
+    ...(prices.length ? { priceRange: `£${Math.min(...prices)}–£${Math.max(...prices)} per month` } : {})
+  };
+}
+const breadcrumbs = crumbs => ({ '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+  itemListElement: crumbs.map(([name, p], i) => ({ '@type': 'ListItem', position: i + 1, name, item: `${BASE}${p}` })) });
+
+function fillTemplate({ title, description, canonical, robots, image, ld = [], body = '', tierbar = '' }) {
+  let h = ssr.template()
+    .replace(/<title>[^<]*<\/title>/, `<title>${escHtml(title)}</title>`)
+    .replace(/<meta name="description" content="[^"]*">/, description ? `<meta name="description" content="${escHtml(description)}">` : '');
+  const img = image ? `${BASE}/${String(image).replace(/^\//, '')}` : `${BASE}/img/the-old-mill.jpg`;
+  const tags = [
+    canonical && `<link rel="canonical" href="${escHtml(canonical)}">`,
+    robots && `<meta name="robots" content="${robots}">`,
+    `<meta property="og:site_name" content="The Old Mill, Kineton">`, `<meta property="og:locale" content="en_GB">`, `<meta property="og:type" content="website">`,
+    `<meta property="og:title" content="${escHtml(title)}">`, description && `<meta property="og:description" content="${escHtml(description)}">`,
+    canonical && `<meta property="og:url" content="${escHtml(canonical)}">`, `<meta property="og:image" content="${escHtml(img)}">`,
+    `<meta name="twitter:card" content="summary_large_image">`, `<meta name="twitter:title" content="${escHtml(title)}">`,
+    description && `<meta name="twitter:description" content="${escHtml(description)}">`, `<meta name="twitter:image" content="${escHtml(img)}">`,
+    ...ld.map(ldJson)
+  ].filter(Boolean).join('\n');
+  h = h.replace('</head>', `${tags}\n</head>`);
+  if (body) h = h.replace('<main id="app"></main>', `<main id="app" data-ssr="1">${body}</main>`);
+  if (tierbar) h = h.replace('<div id="tierbar" hidden></div>', `<div id="tierbar">${tierbar}</div>`);
+  return h;
+}
+
+async function sendPage(req, res, route, status = 200) {
+  const state = { ...(await publicState()), ...route };
+  const r = ssr.render(state);
+  const m = r.meta, notFound = status === 404 || m.notFound;
+  if (!notFound && route.view === 'unit' && req.path !== m.path) return res.redirect(301, m.path); // old or id-based link → its proper address
+  const offHost = req.hostname !== BASE_HOST; // e.g. the railway.app address: point Google at www instead
+  if (offHost || notFound) res.setHeader('X-Robots-Tag', 'noindex');
+  const ld = [];
+  if (route.view === 'site') ld.push(localBusiness(state.S.property, state.S.units));
+  if (m.crumbs) ld.push(breadcrumbs(m.crumbs));
+  res.status(notFound ? 404 : 200).type('html').setHeader('Cache-Control', 'no-cache');
+  res.send(fillTemplate({ title: notFound && route.view === 'site' ? 'Page not found | The Old Mill' : m.title, description: m.description,
+    canonical: notFound ? '' : `${BASE}${m.path}`, robots: notFound ? 'noindex' : '', image: m.image, ld, body: r.html, tierbar: r.tierbar }));
+}
+
+function publicPages() {
+  const page = route => wrap(async (req, res) => sendPage(req, res, typeof route === 'function' ? route(req) : route));
+  app.get('/', page({ view: 'site' }));
+  app.get('/rooms', page({ view: 'cat', curCat: 'rooms' }));
+  app.get('/workshops', page({ view: 'cat', curCat: 'workshops' }));
+  app.get('/storage', page({ view: 'cat', curCat: 'storage' }));
+  app.get('/spaces/:slug', page(req => ({ view: 'unit', curUnit: String(req.params.slug).toLowerCase() })));
+  // Private areas: the page loads as before but is kept out of search results.
+  app.get(['/tenant', '/landlord', '/invite'], (req, res) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.type('html').send(fillTemplate({ title: req.path === '/landlord' ? 'Landlord | The Old Mill' : req.path === '/invite' ? 'Set up your account | The Old Mill' : 'Tenant portal | The Old Mill', robots: 'noindex, nofollow' }));
+  });
+  app.get('/robots.txt', (req, res) => res.type('text/plain').send(['User-agent: *', 'Allow: /', 'Disallow: /tenant', 'Disallow: /landlord', 'Disallow: /invite', 'Disallow: /api/', '', `Sitemap: ${BASE}/sitemap.xml`, ''].join('\n')));
+  app.get('/sitemap.xml', wrap(async (req, res) => {
+    const p = ssr.paths(await publicState());
+    const urls = ['/', ...p.cats, ...p.units.map(u => u.path)];
+    res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(u => `  <url><loc>${escHtml(BASE + u)}</loc></url>`).join('\n')}\n</urlset>\n`);
+  }));
+  // WebP photos: if a .webp version hasn't been made for a photo yet, send the original instead.
+  app.get(/^\/img\/([\w-]+?)(-600)?\.webp$/, (req, res, next) => {
+    if (fs.existsSync(path.join(__dirname, 'public', req.path))) return next();
+    const jpg = ['.jpg', '.jpeg'].map(x => `/img/${req.params[0]}${x}`).find(x => fs.existsSync(path.join(__dirname, 'public', x)));
+    jpg ? res.redirect(302, jpg) : next();
+  });
+}
+
 async function main() {
   await store.init();
   await seedIfEmpty();
@@ -680,13 +783,14 @@ async function main() {
     rolling: true,
     cookie: { httpOnly: true, sameSite: 'lax', secure: PROD, maxAge: 30 * 864e5 }
   }));
-  app.use('/api', routes());
+  app.use('/api', (req, res, next) => { res.setHeader('X-Robots-Tag', 'noindex'); next(); }, routes());
+  publicPages();
   // Pages, scripts and styles are re-checked on every visit so updates show at once; photos can be cached for a day.
   app.use(express.static(path.join(__dirname, 'public'), {
-    index: 'index.html',
+    index: false,
     setHeaders: (res, file) => res.setHeader('Cache-Control', /\/img\//.test(file) && PROD ? 'public, max-age=86400' : 'no-cache')
   }));
-  app.get(['/invite', '/'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+  app.use((req, res) => sendPage(req, res, { view: 'site' }, 404));
   app.use((err, req, res, next) => {
     console.error(err);
     res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment.' });

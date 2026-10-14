@@ -22,3 +22,10 @@ To put it online, follow **[DEPLOY.md](DEPLOY.md)**.
 - Emails aren't sent automatically. Waitlist alerts and invitation links are copied and sent by WhatsApp or email.
 - Direct Debit isn't collected automatically. GoCardless can be added.
 - Photos are added as files in `public/img`. There's no upload button yet.
+
+## Search engines (SEO)
+- Public pages are rendered on the server (`src/ssr.js` runs `public/app.js` in a sandbox), so search engines see full content without JavaScript.
+- Addresses: `/`, `/rooms`, `/workshops`, `/storage`, `/spaces/<name>`. Old `#unit-…` links redirect.
+- `robots.txt` and `sitemap.xml` are generated live from the database. `/tenant`, `/landlord`, `/invite` and `/api` are noindexed.
+- Category intro copy lives in `CATS` in `public/app.js` (draft, edit freely).
+- New photos: add a `.jpg` to `public/img`. WebP versions are optional; until they exist, the original JPEG is served.

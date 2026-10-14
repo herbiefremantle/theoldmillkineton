@@ -284,3 +284,15 @@ table.mail tbody tr:hover td{background:var(--surface)}
 .editor:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .editor blockquote{margin:0 0 0 6px}
 .toolbar select{width:auto;flex:0 0 auto}
+/* Breadcrumbs, type links and card titles (followable links for search engines) */
+.crumbs{font-size:13.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.crumbs a{color:var(--muted);text-decoration:none}
+.crumbs a:hover{color:var(--ink);text-decoration:underline}
+.crumbs [aria-current]{color:var(--ink);font-weight:600}
+.chiplink{border:1px solid var(--line);background:var(--raise);border-radius:999px;padding:6px 12px;font-size:13.5px;text-decoration:none;color:var(--ink)}
+.chiplink:hover{border-color:var(--ink)}
+h3.ucode{margin:0}
+h3.ucode a{color:inherit;text-decoration:none}
+h3.ucode a:hover{text-decoration:underline}
+.foot a{color:inherit}
+picture{display:contents}
