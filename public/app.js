@@ -29,20 +29,20 @@ const unitPath = u => '/spaces/' + slugOf(u);
 // Draft copy: edit freely.
 const CATS = {
   rooms: {path: '/rooms', name: 'Offices & rooms', has: u => u.group === 'unit1' || ['2', '5a', '5b'].includes(u.id),
-    h1: 'Offices and rooms to let in Kineton', title: 'Offices & Rooms to Let in Kineton | The Old Mill',
-    description: 'Offices and rooms to let at The Old Mill, Mill Lane, Kineton. One monthly price with internet, electricity and water included. Request a viewing online.',
-    intro: ['Private offices and rooms at The Old Mill on Mill Lane, Kineton: four Mill Rooms in the mill building, Unit 2 and two small rooms off the entrance hall.', 'They are let on one monthly price that includes internet, electricity, water and the service charge, on a simple licence with a 3-month minimum. Use them as an office, a treatment room, a studio or a craft room, or for whatever your business needs.']},
+    h1: 'Offices and rooms to rent in Kineton', title: 'Offices & Rooms to Rent in Kineton | The Old Mill',
+    description: 'Offices and rooms to rent at The Old Mill, Mill Lane, Kineton. One monthly price with internet, electricity and water included. Request a viewing online.',
+    intro: ['Private offices and rooms to rent at The Old Mill on Mill Lane, Kineton: four Mill Rooms in the mill building, Unit 2 and two small rooms off the entrance hall.', 'They are let on one monthly price that includes internet, electricity, water and the service charge, on a simple licence with a 3-month minimum. Use them as an office, a treatment room, a studio or a craft room, or for whatever your business needs.']},
   workshops: {path: '/workshops', name: 'Workshops', has: u => ['3', '4', '5', '6', '7'].includes(u.id),
-    h1: 'Workshops and units to let in Kineton', title: 'Workshops & Units to Let in Kineton | The Old Mill',
-    description: 'Workshops and commercial units to let at The Old Mill, Mill Lane, Kineton, with loading doors onto Mill Lane. 12-month minimum leases. Request a viewing.',
-    intro: ['Workshops, a warehouse and commercial units at The Old Mill on Mill Lane, Kineton. Unit 3 has wooden double doors and Unit 4 has metal shutters onto Mill Lane for loading.', 'Units are let on a lease with a 12-month minimum term. Each unit shows its rent and monthly service charge, and tenants pay their own electricity and business rates. Small businesses may qualify for Small Business Rate Relief.']},
+    h1: 'Workshops, units and warehouse space to rent in Kineton', title: 'Workshop & Warehouse Units to Rent, Kineton | The Old Mill',
+    description: 'Workshops, warehouse and commercial units to rent at The Old Mill, Mill Lane, Kineton, with loading doors onto Mill Lane. 12-month minimum leases.',
+    intro: ['Workshops, a warehouse and commercial units to rent at The Old Mill on Mill Lane, Kineton. Unit 3 has wooden double doors and Unit 4 has metal shutters onto Mill Lane for loading.', 'Units are let on a lease with a 12-month minimum term. Each unit shows its rent and monthly service charge, and tenants pay their own electricity and business rates. Small businesses may qualify for Small Business Rate Relief.']},
   storage: {path: '/storage', name: 'Storage', has: u => ['g1', 'g2', '5a', '5b', '1d'].includes(u.id),
-    h1: 'Storage and garages to let in Kineton', title: 'Storage & Garages to Let in Kineton | The Old Mill',
-    description: 'Storage to let at The Old Mill, Mill Lane, Kineton: small storage rooms, garages and a top-floor storage area. Request a viewing or join the waitlist.',
-    intro: ['Storage at The Old Mill on Mill Lane, Kineton, from small rooms off the shared entrance hall to two garages and the storage floor that comes with Hoist Loft.', 'Good for stock, equipment, archives or anything your business needs to keep close by.']}
+    h1: 'Storage and garages to rent in Kineton', title: 'Storage & Garages to Rent in Kineton | The Old Mill',
+    description: 'Storage to rent at The Old Mill, Mill Lane, Kineton: small storage rooms, garages and a top-floor storage area. Request a viewing or join the waitlist.',
+    intro: ['Storage space to rent at The Old Mill on Mill Lane, Kineton, from small rooms off the shared entrance hall to two garages and the storage floor that comes with Hoist Loft.', 'Good for stock, equipment, archives or anything your business needs to keep close by.']}
 };
 const catOf = u => Object.keys(CATS).find(k => CATS[k].has(u)) || 'rooms';
-const SITE_TITLE = 'Rooms, Workshops & Storage to Let in Kineton | The Old Mill';
+const SITE_TITLE = 'Offices, Units & Storage to Rent in Kineton | The Old Mill';
 const clip = (t, n) => { t = String(t).replace(/\s+/g, ' ').trim(); if (t.length <= n) return t; const c = t.slice(0, n - 1); return c.slice(0, c.lastIndexOf(' ')).replace(/[,;:.\-–]+$/, '') + '…'; };
 function pageMeta() {
   const P = prop();
@@ -51,7 +51,7 @@ function pageMeta() {
     const u = findUnit(curUnit);
     if (!u) return {title: 'Space not found | The Old Mill', description: 'This space could not be found. See all rooms, workshops and storage to let at The Old Mill, Kineton.', path: '/spaces/' + curUnit, notFound: true};
     const c = CATS[catOf(u)], type = String(u.type || 'Space');
-    const t1 = `${u.name}: ${type} to Let in Kineton | The Old Mill`, t2 = `${u.name} to Let in Kineton | The Old Mill`;
+    const t1 = `${u.name}: ${type} to Rent in Kineton | The Old Mill`, t2 = `${u.name} to Rent in Kineton | The Old Mill`;
     const price = u.status === 'let' ? 'Currently let: join the waitlist.' : u.rent ? `${gbp(priceFor(u, 'kineton'))} a month${u.inclusive ? ' with bills included' : ''}.` : '';
     return {title: t1.length <= 60 ? t1 : t2.length <= 60 ? t2 : clip(`${u.name} | The Old Mill`, 60),
       description: clip(`${u.name} at The Old Mill, Mill Lane, Kineton: ${type.toLowerCase()}${u.size ? `, ${Number(u.size).toLocaleString('en-GB')} sq ft` : ''}. ${price} Request a viewing online.`, 155),
@@ -62,7 +62,7 @@ function pageMeta() {
   if (view === 'invite') return {title: 'Set up your account | The Old Mill', path: '/invite', noindex: true};
   const priced = units().filter(u => u.status !== 'let' && u.inclusive && u.rent && !['5a', '5b'].includes(u.id)).map(u => Number(u.rent));
   return {title: SITE_TITLE, path: '/',
-    description: clip(`Offices, rooms, workshops and storage to let at The Old Mill, Mill Lane, Kineton.${priced.length ? ` Offices from ${gbp(Math.min(...priced))} a month, bills included.` : ''} Request a viewing.`, 155)};
+    description: clip(`Offices, units, workshops, warehouse and storage space to rent at The Old Mill, Mill Lane, Kineton.${priced.length ? ` Offices from ${gbp(Math.min(...priced))} a month, bills included.` : ''} Request a viewing.`, 155)};
 }
 function crumbsHTML(items) {
   return `<nav class="crumbs" aria-label="Breadcrumb">${items.map(([name, href], i) => i === items.length - 1 ? `<span aria-current="page">${esc(name)}</span>` : `<a href="${href}" data-act="go" data-href="${href}">${esc(name)}</a>`).join(' <span aria-hidden="true">›</span> ')}</nav>`;
@@ -511,7 +511,7 @@ function viewSite() {
   return `
   <section class="hero wrap">
     <div class="hero-copy">
-      <p class="eyebrow">Rooms, workshops &amp; storage to let${P.address ? ' · ' + esc(P.address) : ''}</p>
+      <p class="eyebrow">Offices, units, workshops &amp; storage to rent${P.address ? ' · ' + esc(P.address) : ''}</p>
       <h1 class="sign">${esc(P.name)}</h1>
       ${P.tagline ? `<p class="lede">${esc(P.tagline)}</p>` : ''}
       <div class="stats">
