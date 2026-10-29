@@ -651,6 +651,8 @@ function enquireForm(unitId, wait) {
 
 /* ---------- tenant portal ---------- */
 function wifiFor(u) { return (S.wifi?.networks || []).filter(n => n.appliesTo === 'all' || (u && (n.appliesTo === u.id || (n.appliesTo === 'unit1' && u.group === 'unit1')))); }
+// Rointe heaters are in the rooms (the Mill Rooms and Rooms 5A/5B), not the units.
+const hasHeaters = u => !!u && (u.group === 'unit1' || /^Room\b/i.test(u.name || ''));
 function viewTenant() {
   if (mode !== 'tenant' && mode !== 'landlord') return loginView('tenant');
   if (mode === 'tenant') curTenant = me.tenantId;
@@ -693,7 +695,7 @@ function viewTenant() {
         <a class="btn primary" href="/house-rules" target="_blank" rel="noopener">Open house rules</a>
       </section>
       ${mode === 'tenant' ? tenantPushPanel() : ''}
-      ${u?.inclusive ? `<section class="panel"><h3>Heaters</h3>
+      ${hasHeaters(u) ? `<section class="panel"><h3>Heaters</h3>
         <p class="muted">Switch your room's heaters on and off from your phone with the free Rointe Nexa app. The guide shows how to pair each heater and group them into one zone for your room.</p>
         <a class="btn primary" href="/heaters" target="_blank" rel="noopener">Open heater instructions</a>
       </section>` : ''}
