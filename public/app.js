@@ -1550,8 +1550,16 @@ function isInstalled() { return matchMedia('(display-mode: standalone)').matches
 function installSheet() {
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const android = /Android/.test(navigator.userAgent);
-  const steps = ios
-    ? '<ol><li>Open this page in <b>Safari</b>.</li><li>Tap the <b>Share</b> button (the square with an arrow pointing up).</li><li>Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.</li></ol>'
+  // On iPhone only Safari reliably offers "Add to Home Screen"; in Chrome, Gmail, Facebook etc. offer a jump to Safari.
+  const iosOther = ios && /CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|FBAN|FBAV|Instagram|LinkedInApp|Line\/|Snapchat|Twitter/.test(navigator.userAgent);
+  const here = location.href.replace(/#.*$/, '');
+  const safariSteps = '<ol><li>Tap the <b>Share</b> button (the square with an arrow pointing up). If you don\'t see it, tap <b>⋯</b> first.</li><li>Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.</li><li>Open The Old Mill from its new icon and sign in.</li></ol>';
+  const steps = iosOther
+    ? `<div class="note-box"><b>First, open this page in Safari.</b> The app can only be added to your Home Screen from Safari.</div>
+       <footer style="justify-content:flex-start;flex-wrap:wrap"><a class="btn primary" href="x-safari-${esc(here)}">Open in Safari</a><button class="btn" data-act="copy-here">Copy link</button></footer>
+       <p class="muted">If the button doesn't work, tap <b>Copy link</b>, open <b>Safari</b>, paste it into the address bar, then tap <b>Get the app</b> again. In some apps you can also tap <b>⋯</b> and choose <b>Open in Safari</b> or <b>Open in browser</b>.</p>`
+    : ios
+    ? `<p class="muted">If this page opened inside another app (Gmail, WhatsApp, Facebook), tap the <b>Safari</b> compass icon or <b>⋯ → Open in Safari</b> first.</p>${safariSteps}`
     : android
       ? '<ol><li>Open this page in <b>Chrome</b>.</li><li>Tap the <b>⋮</b> menu at the top right.</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li></ol>'
       : '<ol><li>In <b>Chrome</b> or <b>Edge</b>: click the install icon at the right of the address bar, or open the <b>⋮</b> menu and choose <b>Install The Old Mill</b>.</li><li>In <b>Safari</b> on a Mac: choose <b>File → Add to Dock</b>.</li></ol>';
@@ -1571,4 +1579,5 @@ ACT['get-app'] = async () => {
 };
 { const b = $('#install-btn'); if (b) b.hidden = isInstalled(); }
 window.addEventListener('appinstalled', () => { const b = $('#install-btn'); if (b) b.hidden = true; });
+ACT['copy-here'] = () => copyText(location.href.replace(/#.*$/, ''));
 ACT['install-now'] = async () => { if (!installPrompt) return; installPrompt.prompt(); const r = await installPrompt.userChoice; installPrompt = null; closeModal(); if (r.outcome === 'accepted') toast('Installed. Find The Old Mill on your home screen or desktop.'); };

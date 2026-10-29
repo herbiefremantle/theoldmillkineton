@@ -307,3 +307,5 @@ picture{display:contents}
 .match-photo{align-items:center}
 .match-photo .hero-photo picture{flex:none;aspect-ratio:4/3;min-height:0}
 .match-photo .hero-photo picture img{object-fit:contain}
+
+.note-box{background:var(--brass-soft);border-radius:10px;padding:12px 14px;margin:6px 0 4px}
