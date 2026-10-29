@@ -9,6 +9,8 @@ const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00'); d.setDate(d
 const monthLabel = (d = new Date()) => d.toLocaleDateString('en-GB', {month:'long', year:'numeric'});
 const STATUS = {available:'Available', soon:'Coming soon', let:'Let'};
 const ENQ = {new:'New request', contacted:'Contacted', waitlist:'Waitlist', converted:'Now a tenant', declined:'Closed'};
+// Invoices are raised in QuickBooks, so the built-in invoicing is switched off. Set to true to bring it back.
+const INVOICING = false;
 const KIND = {update:'Site update', wifi:'Wi-Fi', notice:'Notice', invoice:'Invoice'};
 const INCLUDES = ['Internet & Wi-Fi', 'Electricity', 'Water'];
 
@@ -677,6 +679,7 @@ function viewTenant() {
           <div><span class="muted">Bills</span><b>${u?.inclusive ? 'Internet, electricity & water included' : 'Paid by you'}</b></div>
           ${u ? `<div><span class="muted">Service charge</span><b>${scText(u, false)}</b></div>` : ''}
           <div><span class="muted">You pay by</span><b>${PAY[t.paymentMethod] || 'Bank transfer'}</b></div>
+          ${INVOICING ? '' : '<div><span class="muted">Invoices</span><b>Emailed to you from QuickBooks</b></div>'}
           <div><span class="muted">Tenancy started</span><b>${fmtDate(t.leaseStart)}</b></div>
           ${t.deposit ? `<div><span class="muted">Deposit</span><b>${gbp(t.deposit)}${t.depositReturned ? ' · returned' : t.depositReceived ? ' · held' : ''}</b></div>` : ''}
           ${u ? `<div><span class="muted">Agreement</span><b>${TERMS[termOf(u)].short}</b></div>` : ''}
@@ -688,9 +691,9 @@ function viewTenant() {
         <p class="muted">Switch your room's heaters on and off from your phone with the free Rointe Nexa app. The guide shows how to pair each heater and group them into one zone for your room.</p>
         <a class="btn primary" href="/heaters" target="_blank" rel="noopener">Open heater instructions</a>
       </section>` : ''}
-      <section class="panel"><div class="row" style="justify-content:space-between"><h3>Invoices</h3><span class="num">${owed ? `<b>${gbp(owed)}</b> <span class="muted">to pay</span>` : '<span class="pill s-paid">All paid</span>'}</span></div>
+      ${INVOICING ? `      <section class="panel"><div class="row" style="justify-content:space-between"><h3>Invoices</h3><span class="num">${owed ? `<b>${gbp(owed)}</b> <span class="muted">to pay</span>` : '<span class="pill s-paid">All paid</span>'}</span></div>
         ${inv.length ? `<div class="list">${inv.map(i => `<div><span><b class="mono">${esc(i.number)}</b><br><span class="muted">${esc(i.period)} · due ${fmtDate(i.due)}</span></span><span class="row num"><b>${gbp(i.total)}</b><span class="pill s-${invState(i)}">${invState(i) === 'paid' ? 'Paid' : invState(i) === 'overdue' ? 'Overdue' : 'Due'}</span><button class="btn sm" data-act="view-invoice" data-id="${esc(i.id)}">View</button></span></div>`).join('')}</div>` : '<p class="muted">No invoices yet.</p>'}
-      </section>
+      </section>` : ''}
       <section class="panel"><h3>Messages &amp; updates</h3>
         ${msgs.length ? `<div>${msgs.map(m => `<article class="msg"><header><span class="pill s-${m.kind === 'wifi' || m.kind === 'invoice' ? 'due' : m.to === 'all' ? 'contacted' : 'pending'}">${KIND[m.kind] || 'Message'}</span><span class="muted" style="font-size:13px">${fmtDate(m.createdAt)}${m.to === 'all' ? ' · to all tenants' : ''}</span></header><b>${esc(m.subject)}</b><p class="muted">${esc(m.body)}</p></article>`).join('')}</div>` : '<p class="muted">No messages yet.</p>'}
       </section>
@@ -726,11 +729,12 @@ function viewLandlord() {
   const pend = S.outbox.filter(o => o.status === 'pending').length;
   const newEnq = S.enquiries.filter(e => e.status === 'new').length;
   const tab = (k, l, n) => `<button type="button" role="tab" data-act="ltab" data-tab="${k}" aria-selected="${ltab === k}">${l}${n ? `<span class="count">${n}</span>` : ''}</button>`;
+  if (!INVOICING && ltab === 'invoices') ltab = 'overview';
   const body = {overview: lOverview, spaces: lSpaces, enquiries: lEnquiries, tenants: lTenants, messages: lMessages, invoices: lInvoices, settings: lSettings, notify: lNotify, email: lEmail}[ltab]();
   return `<div class="dash wrap">
     <div class="dash-head"><div><p class="eyebrow">Landlord</p><h1 class="h2" style="font-size:48px">${esc(prop().name)}</h1></div>
-      <div class="row"><button class="btn" data-act="msg-new">Message tenants</button><button class="btn primary" data-act="inv-new">New invoice</button>${isInstalled() ? '' : '<button class="btn ghost" data-act="get-app">Get the app</button>'}<button class="btn ghost" data-act="password">Change password</button><button class="btn ghost" data-act="logout">Sign out</button></div></div>
-    <div class="tabs" role="tablist">${tab('overview', 'Overview')}${tab('spaces', 'Spaces')}${tab('enquiries', 'Enquiries', newEnq)}${tab('tenants', 'Tenants')}${tab('invoices', 'Invoices')}${tab('messages', 'Messages')}${tab('email', 'Email', mailState.unread)}${tab('notify', 'Waitlist alerts', pend)}${tab('settings', 'Wi-Fi & details')}</div>
+      <div class="row"><button class="btn" data-act="msg-new">Message tenants</button>${INVOICING ? '<button class="btn primary" data-act="inv-new">New invoice</button>' : ''}${isInstalled() ? '' : '<button class="btn ghost" data-act="get-app">Get the app</button>'}<button class="btn ghost" data-act="password">Change password</button><button class="btn ghost" data-act="logout">Sign out</button></div></div>
+    <div class="tabs" role="tablist">${tab('overview', 'Overview')}${tab('spaces', 'Spaces')}${tab('enquiries', 'Enquiries', newEnq)}${tab('tenants', 'Tenants')}${INVOICING ? tab('invoices', 'Invoices') : ''}${tab('messages', 'Messages')}${tab('email', 'Email', mailState.unread)}${tab('notify', 'Waitlist alerts', pend)}${tab('settings', 'Wi-Fi & details')}</div>
     ${body}
   </div>`;
 }
@@ -752,7 +756,7 @@ function lOverview() {
   const open = S.invoices.filter(i => i.status !== 'paid'), overdue = open.filter(isOverdue);
   const wait = S.enquiries.filter(e => e.status === 'waitlist').length;
   const attention = [];
-  overdue.forEach(i => attention.push([`<span class="pill s-overdue">Overdue</span> <b class="mono">${esc(i.number)}</b> · ${esc(tenantById(i.tenantId)?.business || '')} · ${gbp(i.total)}`, `<button class="btn sm" data-act="inv-paid" data-id="${esc(i.id)}">Mark paid</button>`]));
+  if (INVOICING) overdue.forEach(i => attention.push([`<span class="pill s-overdue">Overdue</span> <b class="mono">${esc(i.number)}</b> · ${esc(tenantById(i.tenantId)?.business || '')} · ${gbp(i.total)}`, `<button class="btn sm" data-act="inv-paid" data-id="${esc(i.id)}">Mark paid</button>`]));
   S.enquiries.filter(e => e.status === 'new').forEach(e => attention.push([`<span class="pill s-new">New request</span> ${esc(e.name)} · ${esc(interestLabel(e.interest))}`, `<button class="btn sm" data-act="ltab" data-tab="enquiries">Review</button>`]));
   const pend = S.outbox.filter(o => o.status === 'pending').length;
   if (pend) attention.push([`<span class="pill s-pending">Waitlist</span> ${pend} availability alert${pend > 1 ? 's' : ''} ready to send`, `<button class="btn sm" data-act="ltab" data-tab="notify">Open</button>`]);
@@ -761,7 +765,7 @@ function lOverview() {
   return `${pushNudge()}<div class="kpis num">
       <div class="kpi"><small>Occupancy</small><b>${letN} / ${U.length}</b><small>spaces let</small><div class="meter"><i style="width:${U.length ? Math.round(letN / U.length * 100) : 0}%"></i></div></div>
       <div class="kpi"><small>Monthly rent roll</small><b>${gbp(roll)}</b><small>${activeTenants().length} tenants</small></div>
-      <div class="kpi"><small>Unpaid invoices</small><b>${gbp(open.reduce((s, i) => s + Number(i.total || 0), 0))}</b><small>${overdue.length ? `<span style="color:var(--danger)">${overdue.length} overdue</span>` : 'none overdue'}</small></div>
+      ${INVOICING ? `<div class="kpi"><small>Unpaid invoices</small><b>${gbp(open.reduce((s, i) => s + Number(i.total || 0), 0))}</b><small>${overdue.length ? `<span style="color:var(--danger)">${overdue.length} overdue</span>` : 'none overdue'}</small></div>` : ''}
       <div class="kpi"><small>Waitlist</small><b>${wait}</b><small>people waiting for a space</small></div>
     </div>
     <div class="grid2">
@@ -802,19 +806,19 @@ function lEnquiries() {
 function lTenants() {
   const T = activeTenants(), past = S.tenants.filter(t => t.status === 'former');
   return `<div class="row" style="justify-content:space-between"><p class="muted">${T.length} current tenant${T.length === 1 ? '' : 's'}.</p><button class="btn primary" data-act="tenant-add">Add tenant</button></div>
-    ${T.length ? `<div class="scroll"><table class="t num"><thead><tr><th>Tenant</th><th>Space</th><th>Rent</th><th>Deposit</th><th>Since</th><th>Balance</th><th>Portal</th><th></th></tr></thead><tbody>
+    ${T.length ? `<div class="scroll"><table class="t num"><thead><tr><th>Tenant</th><th>Space</th><th>Rent</th><th>Deposit</th><th>Since</th>${INVOICING ? '<th>Balance</th>' : ''}<th>Portal</th><th></th></tr></thead><tbody>
     ${T.map(t => { const owed = S.invoices.filter(i => i.tenantId === t.id && i.status !== 'paid').reduce((s, i) => s + Number(i.total || 0), 0); const od = S.invoices.some(i => i.tenantId === t.id && isOverdue(i)); return `<tr>
       <td><b>${esc(t.business || t.name)}</b>${exampleChip(t)}<br><span class="muted" style="font-size:13px">${esc(t.name)} · <span class="mono">${esc(t.email)}</span></span></td>
       <td>${esc(unitById(t.unitId)?.name || '—')}</td><td>${gbp(t.rent)}<br><span class="muted" style="font-size:12.5px">${PAY[t.paymentMethod] || 'Bank transfer'}</span></td><td>${t.deposit ? gbp(t.deposit) : '—'}<br><span class="muted" style="font-size:12.5px">${t.depositReturned ? 'Returned ' + fmtDate(t.depositReturned) : t.depositReceived ? 'Held since ' + fmtDate(t.depositReceived) : t.deposit ? 'Not received yet' : ''}</span></td><td>${fmtDate(t.leaseStart)}</td>
-      <td>${owed ? `<span class="pill s-${od ? 'overdue' : 'due'}">${gbp(owed)} ${od ? 'overdue' : 'due'}</span>` : '<span class="pill s-paid">Paid up</span>'}</td>
+      ${INVOICING ? `<td>${owed ? `<span class="pill s-${od ? 'overdue' : 'due'}">${gbp(owed)} ${od ? 'overdue' : 'due'}</span>` : '<span class="pill s-paid">Paid up</span>'}</td>` : ''}
       <td>${portalCell(t)}</td>
-      <td><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn sm" data-act="msg-new" data-to="${esc(t.id)}">Message</button><button class="btn sm" data-act="inv-new" data-tenant="${esc(t.id)}">Invoice</button><button class="btn sm" data-act="tenant-edit" data-id="${esc(t.id)}">Edit</button><button class="btn sm danger" data-act="tenant-end" data-id="${esc(t.id)}">End tenancy</button></div></td></tr>`; }).join('')}
+      <td><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn sm" data-act="msg-new" data-to="${esc(t.id)}">Message</button>${INVOICING ? `<button class="btn sm" data-act="inv-new" data-tenant="${esc(t.id)}">Invoice</button>` : ''}<button class="btn sm" data-act="tenant-edit" data-id="${esc(t.id)}">Edit</button><button class="btn sm danger" data-act="tenant-end" data-id="${esc(t.id)}">End tenancy</button></div></td></tr>`; }).join('')}
     </tbody></table></div>` : '<div class="empty">No tenants yet. Add one, or turn an enquiry into a tenant.</div>'}
     ${past.length ? `<details><summary class="muted" style="cursor:pointer">Former tenants (${past.length})</summary><div class="list" style="margin-top:8px">${past.map(t => `<div><span>${esc(t.business || t.name)} · ${esc(unitById(t.unitId)?.name || '')}</span><button class="btn sm danger" data-act="tenant-del" data-id="${esc(t.id)}">Delete record</button></div>`).join('')}</div></details>` : ''}`;
 }
 function lInvoices() {
   const list = [...S.invoices].sort((a, b) => (b.issued || '').localeCompare(a.issued || '') || (b.number || '').localeCompare(a.number || ''));
-  return `<div class="row" style="justify-content:space-between"><p class="muted" style="max-width:60ch">Invoices appear in each tenant's portal as soon as you create them.</p><div class="row"><button class="btn" data-act="inv-run">Raise ${esc(monthLabel())} rent for everyone</button><button class="btn primary" data-act="inv-new">New invoice</button></div></div>
+  return `<div class="row" style="justify-content:space-between"><p class="muted" style="max-width:60ch">Invoices appear in each tenant's portal as soon as you create them.</p><div class="row"><button class="btn" data-act="inv-run">Raise ${esc(monthLabel())} rent for everyone</button>${INVOICING ? '<button class="btn primary" data-act="inv-new">New invoice</button>' : ''}</div></div>
     ${list.length ? `<div class="scroll"><table class="t num"><thead><tr><th>Number</th><th>Tenant</th><th>Period</th><th>Total</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>
     ${list.map(i => { const st = invState(i); return `<tr><td class="mono">${esc(i.number)}${exampleChip(i)}</td><td>${esc(tenantById(i.tenantId)?.business || 'Unknown tenant')}</td><td>${esc(i.period)}</td><td><b>${gbp(i.total)}</b></td><td>${fmtDate(i.due)}</td>
       <td><span class="pill s-${st}">${st === 'paid' ? 'Paid' : st === 'overdue' ? 'Overdue' : 'Due'}</span></td>
@@ -988,7 +992,7 @@ function tenantForm(t, fromEnq) {
       {id:'deposit', label:'Deposit (£)', type:'number', step:'0.01', value: t.deposit ?? '', hint: 'Leave blank to use the space’s deposit (months × rent)'},
       {id:'depositReceived', label:'Deposit received on', type:'date', value: t.depositReceived || ''},
       {id:'depositReturned', label:'Deposit returned on', type:'date', value: t.depositReturned || ''},
-      ...(isNew ? [{id:'firstInvoice', label:'Raise the first invoice now: deposit plus first month', type:'checkbox', value: true, full: true}] : []),
+      ...(isNew && INVOICING ? [{id:'firstInvoice', label:'Raise the first invoice now: deposit plus first month', type:'checkbox', value: true, full: true}] : []),
       {id:'paymentMethod', label:'Pays by', type:'select', options: (prop().paymentMethods && prop().paymentMethods.length ? prop().paymentMethods : ['dd', 'bank']).map(k => [k, PAY[k]]), value: t.paymentMethod || 'dd'}
     ],
     submit: isNew ? 'Add tenant' : 'Save',
@@ -1302,7 +1306,7 @@ async function inviteTenant(id) {
   try {
     const r = await api('POST', `/api/admin/tenants/${encodeURIComponent(id)}/invite`);
     const first = (t.name || '').split(' ')[0] || 'there';
-    lastInvite = {to: t.email, name: t.name, reset: r.reset, link: r.link, message: `Hi ${first}, here's your link to ${r.reset ? 'reset your password for' : 'set up'} your tenant account at ${prop().name}: ${r.link}\nThe link works for 14 days. In the portal you'll find your invoices, Wi-Fi details and updates.`};
+    lastInvite = {to: t.email, name: t.name, reset: r.reset, link: r.link, message: `Hi ${first}, here's your link to ${r.reset ? 'reset your password for' : 'set up'} your tenant account at ${prop().name}: ${r.link}\nThe link works for 14 days. In the portal you'll find your Wi-Fi details, heater instructions and updates.`};
     openSheet(`<header><h2>${r.reset ? 'Password reset link' : 'Invitation link'}</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header>
       <p>Send this link to ${esc(t.name)} (<span class="mono">${esc(t.email)}</span>) by WhatsApp or email. They open it, choose a password, and their portal is ready. It works once and expires on ${fmtDate(r.expires)}.</p>
       <pre class="draft" style="user-select:all">${esc(r.link)}</pre>
