@@ -714,18 +714,51 @@ const fileUrl = (f, download) => `${mode === 'tenant' ? '/api/tenant/files/' : '
 const DOC_TYPES = {pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'};
 function fileRows(list, canDelete) {
   return `<div class="list">${list.map(f => `<div><span><b>${esc(f.name)}</b><br><span class="muted" style="font-size:13px">Added ${fmtDate(f.createdAt)} · ${fileSize(f.size)}</span></span>
-    <span class="row" style="gap:6px;flex-wrap:nowrap">${/^(application\/pdf|image\/)/.test(f.mime) ? `<button class="btn sm" data-act="view-file" data-url="${esc(fileUrl(f))}" data-dl="${esc(fileUrl(f, true))}" data-name="${esc(f.name)}" data-kind="${f.mime === 'application/pdf' ? 'pdf' : 'img'}">View</button>` : ''}<a class="btn sm" href="${fileUrl(f, true)}">Download</a>${canDelete ? `<button class="btn sm danger" data-act="doc-del" data-id="${esc(f.id)}">Delete</button>` : ''}</span></div>`).join('')}</div>`;
+    <span class="row" style="gap:6px;flex-wrap:nowrap">${/^(application\/pdf|image\/)/.test(f.mime) ? `<button class="btn sm" data-act="view-file" data-url="${esc(fileUrl(f))}" data-dl="${esc(fileUrl(f, true))}" data-name="${esc(f.name)}" data-file="${esc(docFileName(f))}" data-mime="${esc(f.mime)}" data-kind="${f.mime === 'application/pdf' ? 'pdf' : 'img'}">View</button>` : ''}<button class="btn sm" data-act="download-file" data-dl="${esc(fileUrl(f, true))}" data-file="${esc(docFileName(f))}" data-mime="${esc(f.mime)}">Download</button>${canDelete ? `<button class="btn sm danger" data-act="doc-del" data-id="${esc(f.id)}">Delete</button>` : ''}</span></div>`).join('')}</div>`;
 }
 // Opens a document inside the page with a Close button, so the installed app never gets stuck on a file.
-function viewFile({url, dl, name, kind}) {
+function viewFile({url, dl, name, kind, file, mime}) {
   closeFile();
   const v = document.createElement('div');
   v.className = 'viewer'; v.id = 'viewer'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-label', name || 'Document');
-  v.innerHTML = `<header><b>${esc(name || 'Document')}</b><span class="row" style="gap:6px;flex-wrap:nowrap">${dl ? `<a class="btn sm" href="${esc(dl)}">Download</a>` : ''}<button type="button" class="btn sm primary" data-act="viewer-close">Close</button></span></header>
+  v.innerHTML = `<header><b>${esc(name || 'Document')}</b><span class="row" style="gap:6px;flex-wrap:nowrap">${dl ? `<button type="button" class="btn sm" data-act="download-file" data-dl="${esc(dl)}" data-file="${esc(file || name || 'document')}" data-mime="${esc(mime || '')}">Download</button>` : ''}<button type="button" class="btn sm primary" data-act="viewer-close">Close</button></span></header>
     <div class="viewer-body">${kind === 'img' ? `<img src="${esc(url)}" alt="${esc(name || '')}">` : '<div class="viewer-pages"><p class="muted viewer-msg">Loading…</p></div>'}</div>`;
   document.body.appendChild(v); document.body.style.overflow = 'hidden';
   v.querySelector('[data-act="viewer-close"]').focus();
   if (kind !== 'img') renderPdf(v, url, name);
+  if (dl) getFileForSaving(dl, file || name, mime).catch(() => {});
+}
+const docFileName = f => { const ext = {'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx'}[f.mime] || ''; return f.name.toLowerCase().endsWith(ext) ? f.name : f.name + ext; };
+// Saving a file: phones get the Share sheet ("Save to Files", Print, Mail...), which works inside the installed app
+// where plain download links do nothing. Computers get an ordinary download.
+const savedFiles = new Map();
+async function getFileForSaving(url, filename, mime) {
+  if (savedFiles.has(url)) return savedFiles.get(url);
+  const res = await fetch(url, {credentials: 'same-origin'});
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'That file couldn’t be downloaded.');
+  const blob = await res.blob();
+  const type = mime && mime !== 'application/octet-stream' ? mime : blob.type;
+  const file = new File([blob], filename || 'document', {type: type || 'application/octet-stream'});
+  savedFiles.set(url, file);
+  return file;
+}
+async function downloadFile({dl, file: filename, mime}) {
+  const phone = isIOS() || /Android/i.test(navigator.userAgent);
+  let file;
+  try { file = savedFiles.get(dl) || await getFileForSaving(dl, filename, mime); }
+  catch (e) { toast(e.message); return; }
+  if (phone && navigator.canShare && navigator.canShare({files: [file]})) {
+    try { await navigator.share({files: [file], title: file.name}); return; }
+    catch (e) {
+      if (e.name === 'AbortError') return;
+      // The phone needs a fresh tap after the file has loaded.
+      if (e.name === 'NotAllowedError') { toast('Ready. Tap Download again to save it.'); return; }
+    }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file); a.download = file.name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000);
 }
 // PDFs are drawn page by page to fit the screen width (a phone's built-in viewer shows them far too big).
 let pdfLib = null;
@@ -1326,7 +1359,7 @@ function attachmentsHTML(m) {
   return `<div style="display:grid;gap:8px"><span class="eyebrow">Attachments (${list.length})</span><div class="atts">${list.map(a => `
     <div class="att">${/^image\//i.test(a.contentType) && a.previewable ? `<a href="${url(a)}" data-act="view-file" data-url="${esc(url(a))}" data-dl="${esc(url(a, true))}" data-name="${esc(a.filename)}" data-kind="img"><img src="${url(a)}" alt="${esc(a.filename)}" loading="lazy"></a>` : `<div class="att-icon" aria-hidden="true">${/pdf/i.test(a.contentType) ? 'PDF' : esc((a.filename.split('.').pop() || 'FILE').slice(0, 4).toUpperCase())}</div>`}
       <div class="att-name" title="${esc(a.filename)}">${esc(a.filename)}</div><div class="muted" style="font-size:12px">${fileSize(a.size)}</div>
-      <div class="row" style="gap:6px">${a.previewable ? `<button class="btn sm" data-act="view-file" data-url="${esc(url(a))}" data-dl="${esc(url(a, true))}" data-name="${esc(a.filename)}" data-kind="${/pdf/i.test(a.contentType) ? 'pdf' : 'img'}">Preview</button>` : ''}<a class="btn sm" href="${url(a, true)}" download>Download</a></div></div>`).join('')}</div></div>`;
+      <div class="row" style="gap:6px">${a.previewable ? `<button class="btn sm" data-act="view-file" data-url="${esc(url(a))}" data-dl="${esc(url(a, true))}" data-name="${esc(a.filename)}" data-file="${esc(a.filename)}" data-mime="${esc(a.contentType)}" data-kind="${/pdf/i.test(a.contentType) ? 'pdf' : 'img'}">Preview</button>` : ''}<button class="btn sm" data-act="download-file" data-dl="${esc(url(a, true))}" data-file="${esc(a.filename)}" data-mime="${esc(a.contentType)}">Download</button></div></div>`).join('')}</div></div>`;
 }
 async function mailOpen(uid) {
   openSheet('<header><h2>Opening…</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header><p class="muted">Loading the message…</p>');
@@ -1588,6 +1621,7 @@ const ACT = {
   'msg-new': d => messageForm(d.to),
   docs: d => docsSheet(d.id),
   'view-file': d => viewFile(d),
+  'download-file': d => downloadFile(d),
   'viewer-close': () => closeFile(),
   'doc-upload': () => uploadDoc(),
   'doc-del': d => { const f = (S.files || []).find(x => x.id === d.id), tid = f?.tenantId; confirmBox('Delete document', `Delete "${esc(f?.name)}"? The tenant will no longer see it.`, 'Delete', async () => { try { const r = await api('DELETE', `/api/admin/files/${encodeURIComponent(d.id)}`); S.files = r.files; toast('Document deleted'); if (tid) docsSheet(tid); } catch (e) { toast(e.message); } render(); }); },
