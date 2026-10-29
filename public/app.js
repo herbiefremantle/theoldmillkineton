@@ -688,6 +688,10 @@ function viewTenant() {
         ${nets.length ? nets.map(n => `<div class="wifi"><span class="eyebrow">Network</span><span class="mono">${esc(n.ssid)}</span><span class="eyebrow" style="margin-top:6px">Password</span><div class="row" style="justify-content:space-between"><span class="mono">${esc(n.password)}</span><button class="btn sm" data-act="copy-wifi" data-id="${esc(n.id)}">Copy password</button></div></div>`).join('') : '<p class="muted">No Wi-Fi details have been shared for your unit yet.</p>'}
       </section>
       ${docsPanel(t)}
+      <section class="panel"><h3>House rules</h3>
+        <p class="muted">Keys, parking, deliveries, waste, fire safety and who to call if something goes wrong.</p>
+        <a class="btn primary" href="/house-rules" target="_blank" rel="noopener">Open house rules</a>
+      </section>
       ${mode === 'tenant' ? tenantPushPanel() : ''}
       ${u?.inclusive ? `<section class="panel"><h3>Heaters</h3>
         <p class="muted">Switch your room's heaters on and off from your phone with the free Rointe Nexa app. The guide shows how to pair each heater and group them into one zone for your room.</p>
