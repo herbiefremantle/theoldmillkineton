@@ -687,6 +687,7 @@ function viewTenant() {
       <section class="panel"><h3>Wi-Fi</h3>
         ${nets.length ? nets.map(n => `<div class="wifi"><span class="eyebrow">Network</span><span class="mono">${esc(n.ssid)}</span><span class="eyebrow" style="margin-top:6px">Password</span><div class="row" style="justify-content:space-between"><span class="mono">${esc(n.password)}</span><button class="btn sm" data-act="copy-wifi" data-id="${esc(n.id)}">Copy password</button></div></div>`).join('') : '<p class="muted">No Wi-Fi details have been shared for your unit yet.</p>'}
       </section>
+      ${mode === 'tenant' ? tenantPushPanel() : ''}
       ${u?.inclusive ? `<section class="panel"><h3>Heaters</h3>
         <p class="muted">Switch your room's heaters on and off from your phone with the free Rointe Nexa app. The guide shows how to pair each heater and group them into one zone for your room.</p>
         <a class="btn primary" href="/heaters" target="_blank" rel="noopener">Open heater instructions</a>
@@ -840,10 +841,15 @@ function lNotify() {
 /* ---------- phone notifications ---------- */
 const pushState = {supported: 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window, on: false, checked: false, busy: false};
 async function checkPush() {
-  if (!pushState.supported) { pushState.checked = true; return; }
-  try { const reg = await navigator.serviceWorker.ready; pushState.on = !!(await reg.pushManager.getSubscription()) && Notification.permission === 'granted'; } catch (e) {}
+  if (pushState.supported) {
+    // Don't wait forever if the background worker can't start (some in-app browsers).
+    try { const reg = await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(() => r(null), 4000))]); if (reg) pushState.on = !!(await reg.pushManager.getSubscription()) && Notification.permission === 'granted'; } catch (e) {}
+  }
   pushState.checked = true; render();
+  if (mode === 'tenant' && !pushState.on) askTenantPush();
 }
+// Tenants and the landlord register their devices separately: tenants only get their own messages.
+const pushBase = () => mode === 'tenant' ? '/api/tenant/push' : '/api/admin/push';
 const b64ToBytes = b => { const p = '='.repeat((4 - b.length % 4) % 4), raw = atob((b + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(raw, c => c.charCodeAt(0)); };
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 async function enablePush() {
@@ -853,16 +859,33 @@ async function enablePush() {
     const perm = await Notification.requestPermission();
     if (perm !== 'granted') { toast('Notifications are blocked. Allow them in your phone’s settings for this app, then try again.'); return; }
     const reg = await navigator.serviceWorker.ready;
-    const {key} = await api('GET', '/api/admin/push/key');
+    const {key} = await api('GET', pushBase() + '/key');
     const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64ToBytes(key)});
-    await api('POST', '/api/admin/push/subscribe', {subscription: sub.toJSON(), device: navigator.userAgent});
+    await api('POST', pushBase() + '/subscribe', {subscription: sub.toJSON(), device: navigator.userAgent});
     pushState.on = true; toast('Notifications are on for this device');
   } catch (e) { toast(e.message || 'Couldn’t turn notifications on. Try again.'); }
   finally { pushState.busy = false; render(); }
 }
 async function disablePush() {
-  try { const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(); if (sub) { await api('POST', '/api/admin/push/unsubscribe', {endpoint: sub.endpoint}); await sub.unsubscribe(); } } catch (e) {}
+  try { const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(); if (sub) { await api('POST', pushBase() + '/unsubscribe', {endpoint: sub.endpoint}); await sub.unsubscribe(); } } catch (e) {}
   pushState.on = false; toast('Notifications are off for this device'); render();
+}
+// Shown to a tenant the first time they sign in on a device (and not again once they choose).
+function askTenantPush() {
+  let asked = null; try { asked = localStorage.getItem('om-tenant-push-asked'); } catch (e) {}
+  if (asked || !$('#modal').hidden) return;
+  try { localStorage.setItem('om-tenant-push-asked', new Date().toISOString()); } catch (e) {}
+  const needApp = !pushState.supported && isIOS() && !isInstalled();
+  openSheet(`<header><h2>Turn on notifications</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header>
+    <p>Get a notification on this phone whenever ${esc(prop().name)} sends you a message: building news, Wi-Fi changes, or anything about your space.</p>
+    ${needApp ? '<p class="note-box">On iPhone, notifications only work in the app. Tap <b>Get the app</b> to add it to your Home Screen, open it from the icon, sign in, then turn notifications on.</p>' : ''}
+    <footer>${needApp ? '<button class="btn primary" data-act="get-app">Get the app</button>' : pushState.supported ? '<button class="btn primary" data-act="push-on-close">Turn on notifications</button>' : ''}<button class="btn" data-act="close">Not now</button></footer>`);
+}
+function tenantPushPanel() {
+  const msg = !pushState.supported ? (isIOS() && !isInstalled() ? 'On iPhone: tap <b>Get the app</b> to add The Old Mill to your Home Screen, open it from the icon, sign in, and turn notifications on here.' : 'This browser can’t show notifications. Use the installed app or Chrome.')
+    : pushState.on ? 'On for this device. You’ll get a notification whenever we send you a message.' : 'Get a notification on this phone whenever we send you a message.';
+  return `<section class="panel"><h3>Notifications</h3><p class="muted" style="font-size:13.5px">${msg}</p>
+    <div class="row">${pushState.supported ? (pushState.on ? '<button class="btn ghost" data-act="push-off">Turn off on this device</button>' : `<button class="btn primary" data-act="push-on"${pushState.busy ? ' disabled' : ''}>${pushState.busy ? 'Turning on…' : 'Turn on notifications'}</button>`) : (isIOS() && !isInstalled() ? '<button class="btn primary" data-act="get-app">Get the app</button>' : '')}</div></section>`;
 }
 function pushPanel() {
   const msg = !pushState.supported ? (isIOS() && !isInstalled() ? 'On iPhone: add the Old Mill app to your Home Screen (Share → Add to Home Screen), open it from the icon, sign in, and come back here.' : 'This browser can’t show notifications. Use the installed app or Chrome.')
@@ -1376,6 +1399,7 @@ async function loadAll() {
         const d = await api('GET', '/api/me');
         Object.assign(S, {property: d.property, units: d.units, tenants: [d.tenant], invoices: d.invoices, messages: d.messages, wifi: d.wifi});
         mode = 'tenant'; curTenant = d.tenant.id;
+        if (!pushState.checked) setTimeout(checkPush, 0);
       } catch (e) { me = null; mode = 'public'; }
     } else mode = 'public';
   } catch (e) {
@@ -1473,6 +1497,7 @@ const ACT = {
   'prop-edit': () => propForm(),
   'lp-edit': () => lpForm(),
   'push-on': () => enablePush(),
+  'push-on-close': () => { closeModal(); enablePush(); },
   'push-off': () => disablePush(),
   'push-test': async () => {
     try {

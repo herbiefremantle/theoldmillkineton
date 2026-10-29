@@ -14,7 +14,7 @@ self.addEventListener('push', event => {
   let d = {};
   try { d = event.data ? event.data.json() : {}; } catch (e) { d = { body: event.data && event.data.text() }; }
   event.waitUntil(self.registration.showNotification(d.title || 'The Old Mill', {
-    body: d.body || '', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: 'oldmill-enquiry', renotify: true, data: { url: d.url || '/landlord' }
+    body: d.body || '', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: d.tag || 'oldmill-enquiry', renotify: true, data: { url: d.url || '/landlord' }
   }));
 });
 self.addEventListener('notificationclick', event => {

@@ -245,6 +245,19 @@ function routes() {
   }));
 
   /* tenant */
+  // Tenants can turn on notifications for messages the landlord sends them.
+  api.get('/tenant/push/key', needTenant, (req, res) => res.json({ key: VAPID.publicKey }));
+  api.post('/tenant/push/subscribe', needTenant, wrap(async (req, res) => {
+    const sub = req.body && req.body.subscription;
+    if (!validSub(sub)) return res.status(400).json({ error: 'That device couldn’t be registered.' });
+    await store.put('tenantpush', subId(sub.endpoint), { endpoint: sub.endpoint, keys: { p256dh: String(sub.keys.p256dh), auth: String(sub.keys.auth) }, tenantId: req.user.tenantId, device: clean(req.body.device, 200), createdAt: new Date().toISOString() });
+    res.json({ ok: true });
+  }));
+  api.post('/tenant/push/unsubscribe', needTenant, wrap(async (req, res) => {
+    const ep = req.body && req.body.endpoint;
+    if (typeof ep === 'string') await store.del('tenantpush', subId(ep));
+    res.json({ ok: true });
+  }));
   api.get('/me', needTenant, wrap(async (req, res) => {
     const t = await store.get('tenants', req.user.tenantId);
     if (!t || t.status === 'former') return res.status(403).json({ error: 'This tenant account is no longer active.' });
@@ -291,8 +304,10 @@ function routes() {
     const { col, id } = req.params;
     if (!ADMIN_COLLECTIONS.includes(col) || !ID.test(id)) return res.status(400).json({ error: 'That record can’t be saved.' });
     const { id: _ignore, ...data } = req.body || {};
+    const isNewMessage = col === 'messages' && !(await store.get(col, id));
     await store.put(col, id, data);
     res.json({ ok: true });
+    if (isNewMessage) notifyTenants(data.to, { title: data.subject ? `The Old Mill: ${String(data.subject).slice(0, 80)}` : 'New message from The Old Mill', body: String(data.body || '').slice(0, 160), url: '/tenant', tag: `oldmill-msg-${id}` }).catch(e => console.warn('Tenant push failed:', e.message));
   }));
 
   admin.delete('/:col/:id', wrap(async (req, res) => {
@@ -325,6 +340,8 @@ function routes() {
   admin.delete('/tenants/:id/access', wrap(async (req, res) => {
     const u = ID.test(req.params.id) && await store.userBy('tenantId', req.params.id);
     if (u) await store.deleteUser(u.id);
+    // Their phones stop getting message notifications too.
+    for (const s of await store.list('tenantpush')) if (s.tenantId === req.params.id) await store.del('tenantpush', s.id);
     res.json({ ok: true });
   }));
 
@@ -332,14 +349,13 @@ function routes() {
   admin.get('/push/key', (req, res) => res.json({ key: VAPID.publicKey }));
   admin.post('/push/subscribe', wrap(async (req, res) => {
     const sub = req.body && req.body.subscription;
-    if (!sub || typeof sub.endpoint !== 'string' || !/^https:\/\//.test(sub.endpoint) || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) return res.status(400).json({ error: 'That device couldn’t be registered.' });
-    const id = crypto.createHash('sha256').update(sub.endpoint).digest('hex').slice(0, 32);
-    await store.put('pushsubs', id, { endpoint: sub.endpoint, keys: { p256dh: String(sub.keys.p256dh), auth: String(sub.keys.auth) }, device: clean(req.body.device, 200), createdAt: new Date().toISOString() });
+    if (!validSub(sub)) return res.status(400).json({ error: 'That device couldn’t be registered.' });
+    await store.put('pushsubs', subId(sub.endpoint), { endpoint: sub.endpoint, keys: { p256dh: String(sub.keys.p256dh), auth: String(sub.keys.auth) }, device: clean(req.body.device, 200), createdAt: new Date().toISOString() });
     res.json({ ok: true, devices: (await store.list('pushsubs')).length });
   }));
   admin.post('/push/unsubscribe', wrap(async (req, res) => {
     const ep = req.body && req.body.endpoint;
-    if (typeof ep === 'string') await store.del('pushsubs', crypto.createHash('sha256').update(ep).digest('hex').slice(0, 32));
+    if (typeof ep === 'string') await store.del('pushsubs', subId(ep));
     res.json({ ok: true });
   }));
   admin.get('/push/devices', wrap(async (req, res) => res.json({ devices: (await store.list('pushsubs')).map(d => ({ device: d.device, createdAt: d.createdAt })) })));
@@ -696,18 +712,26 @@ async function setupPush() {
   VAPID = { publicKey: k.publicKey, privateKey: k.privateKey };
   webpush.setVapidDetails(`mailto:${process.env.MAIL_USER || process.env.ADMIN_EMAIL || 'hello@theoldmillkineton.co.uk'}`, VAPID.publicKey, VAPID.privateKey);
 }
+const subId = endpoint => crypto.createHash('sha256').update(endpoint).digest('hex').slice(0, 32);
+const validSub = sub => !!(sub && typeof sub.endpoint === 'string' && /^https:\/\//.test(sub.endpoint) && sub.keys && sub.keys.p256dh && sub.keys.auth);
 // Sends to every device the landlord has turned notifications on for; forgets devices that have gone.
-async function notifyLandlord(msg, report) {
+const notifyLandlord = (msg, report) => pushTo('pushsubs', () => true, msg, report);
+// Sends a message notification to one tenant (or 'all'), skipping anyone whose tenancy has ended.
+async function notifyTenants(to, msg) {
+  const current = new Set((await store.list('tenants')).filter(t => t.status !== 'former').map(t => t.id));
+  return pushTo('tenantpush', s => current.has(s.tenantId) && (to === 'all' || s.tenantId === to), msg);
+}
+async function pushTo(col, wanted, msg, report) {
   if (!VAPID.publicKey) return 0;
   let sent = 0;
-  for (const s of await store.list('pushsubs')) {
+  for (const s of (await store.list(col)).filter(wanted)) {
     const where = (s.endpoint.match(/^https:\/\/([^/]+)/) || [])[1] || '?';
     try { await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, JSON.stringify(msg), { TTL: 86400, urgency: 'high' }); sent++; if (report) report.push({ device: s.device, service: where, ok: true }); }
     catch (e) {
       const why = `${e.statusCode || ''} ${(e.body || e.message || '').toString().slice(0, 200)}`.trim();
       console.warn('Push not sent:', where, why);
       if (report) report.push({ device: s.device, service: where, ok: false, error: why });
-      if (e.statusCode === 404 || e.statusCode === 410) await store.del('pushsubs', s.id);
+      if (e.statusCode === 404 || e.statusCode === 410) await store.del(col, s.id);
     }
   }
   return sent;

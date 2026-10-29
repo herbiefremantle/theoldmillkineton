@@ -7,7 +7,7 @@ const path = require('path');
 
 // Records are stored as JSON documents grouped by collection, the same shape the front end uses.
 // "site/property" holds the property details and "admin/wifi" the Wi-Fi networks.
-const COLLECTIONS = ['units', 'tenants', 'invoices', 'messages', 'enquiries', 'outbox', 'site', 'admin', 'views', 'pushsubs'];
+const COLLECTIONS = ['units', 'tenants', 'invoices', 'messages', 'enquiries', 'outbox', 'site', 'admin', 'views', 'pushsubs', 'tenantpush'];
 
 class PgStore {
   constructor(url) {
