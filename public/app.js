@@ -651,8 +651,8 @@ function enquireForm(unitId, wait) {
 
 /* ---------- tenant portal ---------- */
 function wifiFor(u) { return (S.wifi?.networks || []).filter(n => n.appliesTo === 'all' || (u && (n.appliesTo === u.id || (n.appliesTo === 'unit1' && u.group === 'unit1')))); }
-// Rointe heaters are in the rooms (the Mill Rooms and Rooms 5A/5B), not the units.
-const hasHeaters = u => !!u && (u.group === 'unit1' || /^Room\b/i.test(u.name || ''));
+// Rointe heaters are only in the Mill Rooms (Miller, Fodder, Hatch, Hoist Loft).
+const hasHeaters = u => !!u && u.group === 'unit1';
 function viewTenant() {
   if (mode !== 'tenant' && mode !== 'landlord') return loginView('tenant');
   if (mode === 'tenant') curTenant = me.tenantId;
@@ -722,9 +722,46 @@ function viewFile({url, dl, name, kind}) {
   const v = document.createElement('div');
   v.className = 'viewer'; v.id = 'viewer'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-label', name || 'Document');
   v.innerHTML = `<header><b>${esc(name || 'Document')}</b><span class="row" style="gap:6px;flex-wrap:nowrap">${dl ? `<a class="btn sm" href="${esc(dl)}">Download</a>` : ''}<button type="button" class="btn sm primary" data-act="viewer-close">Close</button></span></header>
-    <div class="viewer-body">${kind === 'img' ? `<img src="${esc(url)}" alt="${esc(name || '')}">` : `<iframe src="${esc(url)}" title="${esc(name || 'Document')}"></iframe>`}</div>`;
+    <div class="viewer-body">${kind === 'img' ? `<img src="${esc(url)}" alt="${esc(name || '')}">` : '<div class="viewer-pages"><p class="muted viewer-msg">Loading…</p></div>'}</div>`;
   document.body.appendChild(v); document.body.style.overflow = 'hidden';
   v.querySelector('[data-act="viewer-close"]').focus();
+  if (kind !== 'img') renderPdf(v, url, name);
+}
+// PDFs are drawn page by page to fit the screen width (a phone's built-in viewer shows them far too big).
+let pdfLib = null;
+function loadPdfLib() {
+  if (!pdfLib) pdfLib = new Promise((ok, fail) => {
+    const s = document.createElement('script');
+    s.src = '/vendor/pdfjs/pdf.min.js';
+    s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.js'; ok(window.pdfjsLib); };
+    s.onerror = () => { pdfLib = null; fail(new Error('viewer')); };
+    document.head.appendChild(s);
+  });
+  return pdfLib;
+}
+async function renderPdf(v, url, name) {
+  const box = v.querySelector('.viewer-pages');
+  try {
+    const lib = await loadPdfLib();
+    const pdf = await lib.getDocument({url, withCredentials: true, isEvalSupported: false}).promise;
+    box.innerHTML = '';
+    const width = Math.min(box.clientWidth - 16, 900), ratio = Math.min(window.devicePixelRatio || 1, 3);
+    for (let n = 1; n <= pdf.numPages; n++) {
+      if (!document.body.contains(v)) return;
+      const page = await pdf.getPage(n), base = page.getViewport({scale: 1});
+      const vp = page.getViewport({scale: width / base.width * ratio});
+      const c = document.createElement('canvas');
+      c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+      c.style.width = Math.floor(vp.width / ratio) + 'px';
+      c.setAttribute('aria-label', `${name || 'Document'}, page ${n} of ${pdf.numPages}`);
+      box.appendChild(c);
+      await page.render({canvasContext: c.getContext('2d'), viewport: vp}).promise;
+    }
+  } catch (e) {
+    // If the reader can't load, fall back to the browser's own viewer.
+    box.innerHTML = `<iframe src="${esc(url)}" title="${esc(name || 'Document')}"></iframe>`;
+    box.classList.add('viewer-frame');
+  }
 }
 function closeFile() { const v = $('#viewer'); if (v) { v.remove(); document.body.style.overflow = ''; } }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#viewer')) closeFile(); });
