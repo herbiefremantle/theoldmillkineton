@@ -17,7 +17,7 @@ const INCLUDES = ['Internet & Wi-Fi', 'Electricity', 'Water'];
 /* ---------- state ---------- */
 // mode: 'public' (visitor), 'tenant' (signed-in tenant) or 'landlord'. me = the signed-in account.
 let mode = 'public', me = null, loaded = false, access = [];
-let S = {property: null, wifi: {networks: []}, units: [], tenants: [], invoices: [], messages: [], enquiries: [], outbox: []};
+let S = {property: null, wifi: {networks: []}, units: [], tenants: [], invoices: [], messages: [], enquiries: [], outbox: [], files: []};
 let view = 'site', curCat = 'rooms', siteFilter = 'all', ltab = 'overview', curTenant = null, enqFilter = 'open', curUnit = null, curPhoto = 0;
 const COLS = ['units', 'tenants', 'invoices', 'messages', 'enquiries', 'outbox'];
 
@@ -687,6 +687,7 @@ function viewTenant() {
       <section class="panel"><h3>Wi-Fi</h3>
         ${nets.length ? nets.map(n => `<div class="wifi"><span class="eyebrow">Network</span><span class="mono">${esc(n.ssid)}</span><span class="eyebrow" style="margin-top:6px">Password</span><div class="row" style="justify-content:space-between"><span class="mono">${esc(n.password)}</span><button class="btn sm" data-act="copy-wifi" data-id="${esc(n.id)}">Copy password</button></div></div>`).join('') : '<p class="muted">No Wi-Fi details have been shared for your unit yet.</p>'}
       </section>
+      ${docsPanel(t)}
       ${mode === 'tenant' ? tenantPushPanel() : ''}
       ${u?.inclusive ? `<section class="panel"><h3>Heaters</h3>
         <p class="muted">Switch your room's heaters on and off from your phone with the free Rointe Nexa app. The guide shows how to pair each heater and group them into one zone for your room.</p>
@@ -700,6 +701,51 @@ function viewTenant() {
       </section>
     </div>
   </div>`;
+}
+/* ---------- tenant documents (e.g. the signed agreement) ---------- */
+const tenantFiles = id => (S.files || []).filter(f => f.tenantId === id);
+const fileUrl = (f, download) => `${mode === 'tenant' ? '/api/tenant/files/' : '/api/admin/files/'}${encodeURIComponent(f.id)}${download ? '?download=1' : ''}`;
+const DOC_TYPES = {pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'};
+function fileRows(list, canDelete) {
+  return `<div class="list">${list.map(f => `<div><span><b>${esc(f.name)}</b><br><span class="muted" style="font-size:13px">Added ${fmtDate(f.createdAt)} · ${fileSize(f.size)}</span></span>
+    <span class="row" style="gap:6px;flex-wrap:nowrap"><a class="btn sm" href="${fileUrl(f)}" target="_blank" rel="noopener">View</a><a class="btn sm" href="${fileUrl(f, true)}">Download</a>${canDelete ? `<button class="btn sm danger" data-act="doc-del" data-id="${esc(f.id)}">Delete</button>` : ''}</span></div>`).join('')}</div>`;
+}
+function docsPanel(t) {
+  const list = tenantFiles(t.id);
+  return `<section class="panel"><h3>Documents</h3>${list.length ? fileRows(list, false) : '<p class="muted">Your signed agreement and other documents will appear here.</p>'}</section>`;
+}
+let docsTenant = null;
+function docsSheet(id) {
+  docsTenant = id;
+  const t = tenantById(id), list = tenantFiles(id);
+  openSheet(`<header><h2>Documents · ${esc(t?.business || t?.name || '')}</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header>
+    <p class="muted">Documents you add here appear in ${esc((t?.name || 'the tenant').split(' ')[0])}'s portal, where they can view or download them.</p>
+    ${list.length ? fileRows(list, true) : '<p class="muted">No documents yet.</p>'}
+    <div style="display:grid;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">
+      <label class="field"><span>File (PDF, Word, JPG or PNG, up to 15 MB)</span><input id="doc-file" type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"></label>
+      <label class="field"><span>Name shown to the tenant</span><input id="doc-name" type="text" maxlength="120" value="Signed licence agreement"></label>
+      <label class="check"><input type="checkbox" id="doc-notify" checked><span>Send ${esc((t?.name || 'them').split(' ')[0])} a message (and notification) that it's ready</span></label>
+    </div>
+    <footer><button class="btn" data-act="close">Close</button><button class="btn primary" data-act="doc-upload" id="doc-upload-btn">Upload</button></footer>`);
+}
+async function uploadDoc() {
+  const t = tenantById(docsTenant), file = $('#doc-file')?.files[0];
+  if (!t) return;
+  if (!file) { toast('Choose a file first.'); return; }
+  if (file.size > 15 * 1048576) { toast('That file is too big. The limit is 15 MB.'); return; }
+  const type = DOC_TYPES[(file.name.split('.').pop() || '').toLowerCase()] || file.type;
+  if (!Object.values(DOC_TYPES).includes(type)) { toast('Upload a PDF, Word document (.docx), JPG or PNG.'); return; }
+  const name = $('#doc-name').value.trim() || file.name.replace(/\.[^.]+$/, ''), notify = $('#doc-notify').checked;
+  const btn = $('#doc-upload-btn'); btn.disabled = true; btn.textContent = 'Uploading…';
+  try {
+    const res = await fetch(`/api/admin/tenants/${encodeURIComponent(t.id)}/files?name=${encodeURIComponent(name)}`, {method: 'POST', headers: {'Content-Type': type}, body: file, credentials: 'same-origin'});
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(r.error || 'The upload didn’t work. Try again.');
+    S.files = r.files || S.files;
+    if (notify) await put('messages', {id: uid(), to: t.id, kind: 'notice', subject: `${name} is in your portal`, body: `We've added "${name}" to the Documents section of your tenant portal. You can view or download it any time.`, createdAt: new Date().toISOString()});
+    toast('Document uploaded');
+    docsSheet(t.id); render();
+  } catch (e) { toast(e.message); btn.disabled = false; btn.textContent = 'Upload'; }
 }
 function invoiceSheet(id) {
   const i = S.invoices.find(x => x.id === id); if (!i) return;
@@ -813,7 +859,7 @@ function lTenants() {
       <td>${esc(unitById(t.unitId)?.name || '—')}</td><td>${gbp(t.rent)}<br><span class="muted" style="font-size:12.5px">${PAY[t.paymentMethod] || 'Bank transfer'}</span></td><td>${t.deposit ? gbp(t.deposit) : '—'}<br><span class="muted" style="font-size:12.5px">${t.depositReturned ? 'Returned ' + fmtDate(t.depositReturned) : t.depositReceived ? 'Held since ' + fmtDate(t.depositReceived) : t.deposit ? 'Not received yet' : ''}</span></td><td>${fmtDate(t.leaseStart)}</td>
       ${INVOICING ? `<td>${owed ? `<span class="pill s-${od ? 'overdue' : 'due'}">${gbp(owed)} ${od ? 'overdue' : 'due'}</span>` : '<span class="pill s-paid">Paid up</span>'}</td>` : ''}
       <td>${portalCell(t)}</td>
-      <td><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn sm" data-act="msg-new" data-to="${esc(t.id)}">Message</button>${INVOICING ? `<button class="btn sm" data-act="inv-new" data-tenant="${esc(t.id)}">Invoice</button>` : ''}<button class="btn sm" data-act="tenant-edit" data-id="${esc(t.id)}">Edit</button><button class="btn sm danger" data-act="tenant-end" data-id="${esc(t.id)}">End tenancy</button></div></td></tr>`; }).join('')}
+      <td><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn sm" data-act="msg-new" data-to="${esc(t.id)}">Message</button>${INVOICING ? `<button class="btn sm" data-act="inv-new" data-tenant="${esc(t.id)}">Invoice</button>` : ''}<button class="btn sm" data-act="docs" data-id="${esc(t.id)}">Documents${tenantFiles(t.id).length ? ` (${tenantFiles(t.id).length})` : ''}</button><button class="btn sm" data-act="tenant-edit" data-id="${esc(t.id)}">Edit</button><button class="btn sm danger" data-act="tenant-end" data-id="${esc(t.id)}">End tenancy</button></div></td></tr>`; }).join('')}
     </tbody></table></div>` : '<div class="empty">No tenants yet. Add one, or turn an enquiry into a tenant.</div>'}
     ${past.length ? `<details><summary class="muted" style="cursor:pointer">Former tenants (${past.length})</summary><div class="list" style="margin-top:8px">${past.map(t => `<div><span>${esc(t.business || t.name)} · ${esc(unitById(t.unitId)?.name || '')}</span><button class="btn sm danger" data-act="tenant-del" data-id="${esc(t.id)}">Delete record</button></div>`).join('')}</div></details>` : ''}`;
 }
@@ -1385,6 +1431,7 @@ async function refreshAdmin() {
   S.views = d.views || [];
   Object.assign(S, {property: d.property, wifi: d.wifi, units: d.units, tenants: d.tenants, invoices: d.invoices, messages: d.messages, enquiries: d.enquiries, outbox: d.outbox});
   access = d.access || [];
+  S.files = d.files || [];
   render();
   if (!mailState.checked) mailStatus();
   if (!pushState.checked) checkPush();
@@ -1397,7 +1444,7 @@ async function loadAll() {
     else if (me && me.role === 'tenant') {
       try {
         const d = await api('GET', '/api/me');
-        Object.assign(S, {property: d.property, units: d.units, tenants: [d.tenant], invoices: d.invoices, messages: d.messages, wifi: d.wifi});
+        Object.assign(S, {property: d.property, units: d.units, tenants: [d.tenant], invoices: d.invoices, messages: d.messages, wifi: d.wifi, files: d.files || []});
         mode = 'tenant'; curTenant = d.tenant.id;
         if (!pushState.checked) setTimeout(checkPush, 0);
       } catch (e) { me = null; mode = 'public'; }
@@ -1484,6 +1531,9 @@ const ACT = {
   'tenant-end': d => { const t = tenantById(d.id), u = unitById(t?.unitId); confirmBox('End tenancy', `End ${esc(t.business || t.name)}'s tenancy of ${esc(u?.name || 'their space')}? The space will be set to Available and matching waitlist alerts will be drafted. Their invoices are kept.`, 'End tenancy', async () => { await put('tenants', {...t, status: 'former'}); if (u) await setUnitStatus(u.id, 'available'); }); },
   'tenant-del': d => confirmBox('Delete record', 'Delete this former tenant record? Their invoices stay in the Invoices list.', 'Delete', () => del('tenants', d.id)),
   'msg-new': d => messageForm(d.to),
+  docs: d => docsSheet(d.id),
+  'doc-upload': () => uploadDoc(),
+  'doc-del': d => { const f = (S.files || []).find(x => x.id === d.id), tid = f?.tenantId; confirmBox('Delete document', `Delete "${esc(f?.name)}"? The tenant will no longer see it.`, 'Delete', async () => { try { const r = await api('DELETE', `/api/admin/files/${encodeURIComponent(d.id)}`); S.files = r.files; toast('Document deleted'); if (tid) docsSheet(tid); } catch (e) { toast(e.message); } render(); }); },
   'msg-del': d => confirmBox('Delete message', 'Remove this message from tenant portals?', 'Delete', () => del('messages', d.id)),
   'inv-new': d => invoiceForm(d.tenant),
   'inv-run': () => runMonthly(),

@@ -34,7 +34,32 @@ class PgStore {
         invite_token_hash TEXT,
         invite_expires TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS files (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        mime TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        data BYTEA NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );`);
+  }
+
+  // Documents uploaded for a tenant (e.g. the signed agreement). Listing never loads the file contents.
+  async listFiles() {
+    const r = await this.pool.query('SELECT id, tenant_id, name, mime, size, created_at FROM files ORDER BY created_at DESC');
+    return r.rows.map(fileRow);
+  }
+  async getFile(id) {
+    const r = await this.pool.query('SELECT * FROM files WHERE id = $1', [id]);
+    return r.rows[0] ? { ...fileRow(r.rows[0]), data: r.rows[0].data } : null;
+  }
+  async putFile(f, data) {
+    await this.pool.query('INSERT INTO files (id, tenant_id, name, mime, size, data) VALUES ($1, $2, $3, $4, $5, $6)', [f.id, f.tenantId, f.name, f.mime, data.length, data]);
+  }
+  async delFile(id) {
+    await this.pool.query('DELETE FROM files WHERE id = $1', [id]);
   }
 
   async list(collection) {
@@ -77,6 +102,9 @@ class PgStore {
   }
 }
 
+function fileRow(r) {
+  return { id: r.id, tenantId: r.tenant_id, name: r.name, mime: r.mime, size: r.size, createdAt: new Date(r.created_at).toISOString() };
+}
 function fromRow(r) {
   return {
     id: r.id, email: r.email, passwordHash: r.password_hash, role: r.role, tenantId: r.tenant_id,
@@ -92,6 +120,26 @@ class FileStore {
   async init() {
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
     this.db = fs.existsSync(this.file) ? JSON.parse(fs.readFileSync(this.file, 'utf8')) : { docs: {}, users: [] };
+    this.db.files = this.db.files || [];
+    this.dir = path.join(path.dirname(this.file), 'files');
+    fs.mkdirSync(this.dir, { recursive: true });
+  }
+  async listFiles() {
+    return [...this.db.files].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  async getFile(id) {
+    const f = this.db.files.find(x => x.id === id);
+    return f ? { ...f, data: fs.readFileSync(path.join(this.dir, id)) } : null;
+  }
+  async putFile(f, data) {
+    fs.writeFileSync(path.join(this.dir, f.id), data);
+    this.db.files.push({ id: f.id, tenantId: f.tenantId, name: f.name, mime: f.mime, size: data.length, createdAt: new Date().toISOString() });
+    this.save();
+  }
+  async delFile(id) {
+    this.db.files = this.db.files.filter(x => x.id !== id);
+    fs.rmSync(path.join(this.dir, id), { force: true });
+    this.save();
   }
   save() {
     fs.writeFileSync(this.file, JSON.stringify(this.db, null, 1));

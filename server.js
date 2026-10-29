@@ -41,6 +41,18 @@ app.use(express.json({ limit: '300kb' }));
 /* ---------- helpers ---------- */
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 const EMAIL = /^[^\s@]{1,100}@[^\s@]{1,100}\.[^\s@]{2,}$/;
+// Documents the landlord can upload for a tenant, e.g. the signed agreement.
+const FILE_TYPES = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx' };
+const FILE_ID = /^[a-f0-9]{24}$/;
+function sendStoredFile(res, f, download) {
+  const ext = FILE_TYPES[f.mime] || '';
+  const base = String(f.name).replace(/[^\w .()-]+/g, '').trim() || 'document';
+  const name = base.toLowerCase().endsWith(ext) ? base : base + ext;
+  res.setHeader('Content-Type', f.mime);
+  res.setHeader('Content-Disposition', `${download ? 'attachment' : 'inline'}; filename="${name}"; filename*=UTF-8''${encodeURIComponent(name)}`);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.send(f.data);
+}
 const ADMIN_COLLECTIONS = ['units', 'tenants', 'invoices', 'messages', 'enquiries', 'outbox'];
 const newId = () => crypto.randomBytes(9).toString('base64url');
 const hashToken = t => crypto.createHash('sha256').update(t).digest('hex');
@@ -245,6 +257,11 @@ function routes() {
   }));
 
   /* tenant */
+  api.get('/tenant/files/:fid', needTenant, wrap(async (req, res) => {
+    const f = FILE_ID.test(req.params.fid) && await store.getFile(req.params.fid);
+    if (!f || f.tenantId !== req.user.tenantId) return res.status(404).json({ error: 'That document isn’t available.' });
+    sendStoredFile(res, f, req.query.download === '1');
+  }));
   // Tenants can turn on notifications for messages the landlord sends them.
   api.get('/tenant/push/key', needTenant, (req, res) => res.json({ key: VAPID.publicKey }));
   api.post('/tenant/push/subscribe', needTenant, wrap(async (req, res) => {
@@ -270,6 +287,7 @@ function routes() {
       tenant: t,
       invoices: (await store.list('invoices')).filter(i => i.tenantId === t.id),
       messages: (await store.list('messages')).filter(m => m.to === 'all' || m.to === t.id),
+      files: (await store.listFiles()).filter(f => f.tenantId === t.id),
       wifi: { networks: nets }
     });
   }));
@@ -286,6 +304,7 @@ function routes() {
       const vis = Object.values(v.visitors || {});
       return { unitId: v.id, unique: vis.length, week: vis.filter(x => Date.parse(x.last) > week).length, total: v.total || 0, last: vis.reduce((m, x) => (x.last > m ? x.last : m), '') };
     });
+    out.files = await store.listFiles();
     out.access = (await store.listUsers()).filter(u => u.role === 'tenant').map(u => ({
       tenantId: u.tenantId, email: u.email, active: !!u.passwordHash, inviteExpires: u.inviteExpires
     }));
@@ -343,6 +362,29 @@ function routes() {
     // Their phones stop getting message notifications too.
     for (const s of await store.list('tenantpush')) if (s.tenantId === req.params.id) await store.del('tenantpush', s.id);
     res.json({ ok: true });
+  }));
+
+  /* tenant documents */
+  admin.post('/tenants/:id/files', express.raw({ type: () => true, limit: '15mb' }), wrap(async (req, res) => {
+    const t = ID.test(req.params.id) && await store.get('tenants', req.params.id);
+    if (!t) return res.status(404).json({ error: 'That tenant wasn’t found.' });
+    const mime = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+    const data = req.body;
+    if (!FILE_TYPES[mime]) return res.status(400).json({ error: 'Upload a PDF, Word document (.docx), JPG or PNG.' });
+    if (!Buffer.isBuffer(data) || !data.length) return res.status(400).json({ error: 'That file is empty.' });
+    if (mime === 'application/pdf' && data.subarray(0, 5).toString() !== '%PDF-') return res.status(400).json({ error: 'That file isn’t a valid PDF.' });
+    const f = { id: crypto.randomBytes(12).toString('hex'), tenantId: t.id, name: clean(req.query.name, 120) || 'Document', mime };
+    await store.putFile(f, data);
+    res.json({ ok: true, files: await store.listFiles() });
+  }));
+  admin.get('/files/:fid', wrap(async (req, res) => {
+    const f = FILE_ID.test(req.params.fid) && await store.getFile(req.params.fid);
+    if (!f) return res.status(404).json({ error: 'That document wasn’t found.' });
+    sendStoredFile(res, f, req.query.download === '1');
+  }));
+  admin.delete('/files/:fid', wrap(async (req, res) => {
+    if (FILE_ID.test(req.params.fid)) await store.delFile(req.params.fid);
+    res.json({ ok: true, files: await store.listFiles() });
   }));
 
   /* phone notifications (web push to the installed app) */
@@ -871,6 +913,7 @@ async function main() {
   }));
   app.use((req, res) => sendPage(req, res, { view: 'site' }, 404));
   app.use((err, req, res, next) => {
+    if (err && err.type === 'entity.too.large') return res.status(413).json({ error: 'That file is too big. The limit is 15 MB.' });
     console.error(err);
     res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment.' });
   });
