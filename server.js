@@ -801,7 +801,13 @@ function publicPages() {
     res.setHeader('Cache-Control', 'no-cache');
     res.type('html').send(fillTemplate({ title: req.path === '/landlord' ? 'Landlord | The Old Mill' : req.path === '/invite' ? 'Set up your account | The Old Mill' : 'Tenant portal | The Old Mill', robots: 'noindex, nofollow' }));
   });
-  app.get('/robots.txt', (req, res) => res.type('text/plain').send(['User-agent: *', 'Allow: /', 'Disallow: /tenant', 'Disallow: /landlord', 'Disallow: /invite', 'Disallow: /api/', '', `Sitemap: ${BASE}/sitemap.xml`, ''].join('\n')));
+  // Tenant guide to the Rointe heaters (linked from the tenant portal).
+  app.get('/heaters', (req, res) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(__dirname, 'public', 'heaters.html'));
+  });
+  app.get('/robots.txt', (req, res) => res.type('text/plain').send(['User-agent: *', 'Allow: /', 'Disallow: /tenant', 'Disallow: /landlord', 'Disallow: /invite', 'Disallow: /heaters', 'Disallow: /api/', '', `Sitemap: ${BASE}/sitemap.xml`, ''].join('\n')));
   app.get('/sitemap.xml', wrap(async (req, res) => {
     const p = ssr.paths(await publicState());
     const urls = ['/', ...p.cats, ...p.units.map(u => u.path)];

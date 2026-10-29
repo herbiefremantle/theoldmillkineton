@@ -684,6 +684,10 @@ function viewTenant() {
       <section class="panel"><h3>Wi-Fi</h3>
         ${nets.length ? nets.map(n => `<div class="wifi"><span class="eyebrow">Network</span><span class="mono">${esc(n.ssid)}</span><span class="eyebrow" style="margin-top:6px">Password</span><div class="row" style="justify-content:space-between"><span class="mono">${esc(n.password)}</span><button class="btn sm" data-act="copy-wifi" data-id="${esc(n.id)}">Copy password</button></div></div>`).join('') : '<p class="muted">No Wi-Fi details have been shared for your unit yet.</p>'}
       </section>
+      ${u?.inclusive ? `<section class="panel"><h3>Heaters</h3>
+        <p class="muted">Switch your room's heaters on and off from your phone with the free Rointe Nexa app. The guide shows how to pair each heater and group them into one zone for your room.</p>
+        <a class="btn primary" href="/heaters" target="_blank" rel="noopener">Open heater instructions</a>
+      </section>` : ''}
       <section class="panel"><div class="row" style="justify-content:space-between"><h3>Invoices</h3><span class="num">${owed ? `<b>${gbp(owed)}</b> <span class="muted">to pay</span>` : '<span class="pill s-paid">All paid</span>'}</span></div>
         ${inv.length ? `<div class="list">${inv.map(i => `<div><span><b class="mono">${esc(i.number)}</b><br><span class="muted">${esc(i.period)} · due ${fmtDate(i.due)}</span></span><span class="row num"><b>${gbp(i.total)}</b><span class="pill s-${invState(i)}">${invState(i) === 'paid' ? 'Paid' : invState(i) === 'overdue' ? 'Overdue' : 'Due'}</span><button class="btn sm" data-act="view-invoice" data-id="${esc(i.id)}">View</button></span></div>`).join('')}</div>` : '<p class="muted">No invoices yet.</p>'}
       </section>
