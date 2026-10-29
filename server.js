@@ -44,7 +44,13 @@ const EMAIL = /^[^\s@]{1,100}@[^\s@]{1,100}\.[^\s@]{2,}$/;
 // Documents the landlord can upload for a tenant, e.g. the signed agreement.
 const FILE_TYPES = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx' };
 const FILE_ID = /^[a-f0-9]{24}$/;
+// Lets a document or attachment show inside the site's own viewer (pages from elsewhere still can't frame it).
+function allowOwnViewer(res) {
+  const csp = res.getHeader('Content-Security-Policy');
+  if (csp) res.setHeader('Content-Security-Policy', String(csp).replace("frame-ancestors 'none'", "frame-ancestors 'self'"));
+}
 function sendStoredFile(res, f, download) {
+  allowOwnViewer(res);
   const ext = FILE_TYPES[f.mime] || '';
   const base = String(f.name).replace(/[^\w .()-]+/g, '').trim() || 'document';
   const name = base.toLowerCase().endsWith(ext) ? base : base + ext;
@@ -450,6 +456,7 @@ function routes() {
       res.setHeader('Content-Type', inline ? a.contentType : 'application/octet-stream');
       res.setHeader('Content-Disposition', `${inline ? 'inline' : 'attachment'}; filename="${name}"; filename*=UTF-8''${encodeURIComponent(a.filename)}`);
       res.setHeader('Cache-Control', 'private, no-store');
+      allowOwnViewer(res);
       res.send(a.content);
     } catch (e) { mailError(res, e); }
   }));

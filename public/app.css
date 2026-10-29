@@ -309,3 +309,11 @@ picture{display:contents}
 .match-photo .hero-photo picture img{object-fit:contain}
 
 .note-box{background:var(--brass-soft);border-radius:10px;padding:12px 14px;margin:6px 0 4px}
+
+/* In-page document viewer (keeps the installed app from getting stuck on a file) */
+.viewer{position:fixed;inset:0;z-index:100;background:var(--paper);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.viewer header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line)}
+.viewer header b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.viewer-body{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;background:var(--surface)}
+.viewer-body iframe{display:block;width:100%;height:100%;border:0;background:#fff}
+.viewer-body img{display:block;max-width:100%;height:auto;margin:0 auto}

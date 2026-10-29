@@ -712,8 +712,20 @@ const fileUrl = (f, download) => `${mode === 'tenant' ? '/api/tenant/files/' : '
 const DOC_TYPES = {pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'};
 function fileRows(list, canDelete) {
   return `<div class="list">${list.map(f => `<div><span><b>${esc(f.name)}</b><br><span class="muted" style="font-size:13px">Added ${fmtDate(f.createdAt)} · ${fileSize(f.size)}</span></span>
-    <span class="row" style="gap:6px;flex-wrap:nowrap"><a class="btn sm" href="${fileUrl(f)}" target="_blank" rel="noopener">View</a><a class="btn sm" href="${fileUrl(f, true)}">Download</a>${canDelete ? `<button class="btn sm danger" data-act="doc-del" data-id="${esc(f.id)}">Delete</button>` : ''}</span></div>`).join('')}</div>`;
+    <span class="row" style="gap:6px;flex-wrap:nowrap">${/^(application\/pdf|image\/)/.test(f.mime) ? `<button class="btn sm" data-act="view-file" data-url="${esc(fileUrl(f))}" data-dl="${esc(fileUrl(f, true))}" data-name="${esc(f.name)}" data-kind="${f.mime === 'application/pdf' ? 'pdf' : 'img'}">View</button>` : ''}<a class="btn sm" href="${fileUrl(f, true)}">Download</a>${canDelete ? `<button class="btn sm danger" data-act="doc-del" data-id="${esc(f.id)}">Delete</button>` : ''}</span></div>`).join('')}</div>`;
 }
+// Opens a document inside the page with a Close button, so the installed app never gets stuck on a file.
+function viewFile({url, dl, name, kind}) {
+  closeFile();
+  const v = document.createElement('div');
+  v.className = 'viewer'; v.id = 'viewer'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-label', name || 'Document');
+  v.innerHTML = `<header><b>${esc(name || 'Document')}</b><span class="row" style="gap:6px;flex-wrap:nowrap">${dl ? `<a class="btn sm" href="${esc(dl)}">Download</a>` : ''}<button type="button" class="btn sm primary" data-act="viewer-close">Close</button></span></header>
+    <div class="viewer-body">${kind === 'img' ? `<img src="${esc(url)}" alt="${esc(name || '')}">` : `<iframe src="${esc(url)}" title="${esc(name || 'Document')}"></iframe>`}</div>`;
+  document.body.appendChild(v); document.body.style.overflow = 'hidden';
+  v.querySelector('[data-act="viewer-close"]').focus();
+}
+function closeFile() { const v = $('#viewer'); if (v) { v.remove(); document.body.style.overflow = ''; } }
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#viewer')) closeFile(); });
 function docsPanel(t) {
   const list = tenantFiles(t.id);
   return `<section class="panel"><h3>Documents</h3>${list.length ? fileRows(list, false) : '<p class="muted">Your signed agreement and other documents will appear here.</p>'}</section>`;
@@ -1273,9 +1285,9 @@ function attachmentsHTML(m) {
   if (!list.length) return '';
   const url = (a, dl) => `/api/admin/mail/${mailState.folder}/${m.uid}/attachment/${a.index}${dl ? '?download=1' : ''}`;
   return `<div style="display:grid;gap:8px"><span class="eyebrow">Attachments (${list.length})</span><div class="atts">${list.map(a => `
-    <div class="att">${/^image\//i.test(a.contentType) && a.previewable ? `<a href="${url(a)}" target="_blank" rel="noopener"><img src="${url(a)}" alt="${esc(a.filename)}" loading="lazy"></a>` : `<div class="att-icon" aria-hidden="true">${/pdf/i.test(a.contentType) ? 'PDF' : esc((a.filename.split('.').pop() || 'FILE').slice(0, 4).toUpperCase())}</div>`}
+    <div class="att">${/^image\//i.test(a.contentType) && a.previewable ? `<a href="${url(a)}" data-act="view-file" data-url="${esc(url(a))}" data-dl="${esc(url(a, true))}" data-name="${esc(a.filename)}" data-kind="img"><img src="${url(a)}" alt="${esc(a.filename)}" loading="lazy"></a>` : `<div class="att-icon" aria-hidden="true">${/pdf/i.test(a.contentType) ? 'PDF' : esc((a.filename.split('.').pop() || 'FILE').slice(0, 4).toUpperCase())}</div>`}
       <div class="att-name" title="${esc(a.filename)}">${esc(a.filename)}</div><div class="muted" style="font-size:12px">${fileSize(a.size)}</div>
-      <div class="row" style="gap:6px">${a.previewable ? `<a class="btn sm" href="${url(a)}" target="_blank" rel="noopener">Preview</a>` : ''}<a class="btn sm" href="${url(a, true)}" download>Download</a></div></div>`).join('')}</div></div>`;
+      <div class="row" style="gap:6px">${a.previewable ? `<button class="btn sm" data-act="view-file" data-url="${esc(url(a))}" data-dl="${esc(url(a, true))}" data-name="${esc(a.filename)}" data-kind="${/pdf/i.test(a.contentType) ? 'pdf' : 'img'}">Preview</button>` : ''}<a class="btn sm" href="${url(a, true)}" download>Download</a></div></div>`).join('')}</div></div>`;
 }
 async function mailOpen(uid) {
   openSheet('<header><h2>Opening…</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></header><p class="muted">Loading the message…</p>');
@@ -1536,6 +1548,8 @@ const ACT = {
   'tenant-del': d => confirmBox('Delete record', 'Delete this former tenant record? Their invoices stay in the Invoices list.', 'Delete', () => del('tenants', d.id)),
   'msg-new': d => messageForm(d.to),
   docs: d => docsSheet(d.id),
+  'view-file': d => viewFile(d),
+  'viewer-close': () => closeFile(),
   'doc-upload': () => uploadDoc(),
   'doc-del': d => { const f = (S.files || []).find(x => x.id === d.id), tid = f?.tenantId; confirmBox('Delete document', `Delete "${esc(f?.name)}"? The tenant will no longer see it.`, 'Delete', async () => { try { const r = await api('DELETE', `/api/admin/files/${encodeURIComponent(d.id)}`); S.files = r.files; toast('Document deleted'); if (tid) docsSheet(tid); } catch (e) { toast(e.message); } render(); }); },
   'msg-del': d => confirmBox('Delete message', 'Remove this message from tenant portals?', 'Delete', () => del('messages', d.id)),
