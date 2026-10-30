@@ -724,6 +724,19 @@ async function migrate() {
     await store.put('admin', 'migrations', done);
     console.log('Applied update: removed Unit 5 corner photo.');
   }
+  if (!done['2026-10-miller-photos']) {
+    const u = await store.get('units', '1a');
+    if (u) {
+      const d = strip(u);
+      // Only swap the placeholder labels; keep any real photos added since.
+      if (!(d.photos || []).some(p => p && p.src)) d.photos = [{ caption: 'Miller', src: 'img/miller-1.jpg' }, { caption: 'Miller', src: 'img/miller-2.jpg' }];
+      if (Array.isArray(d.info)) d.info = d.info.map(x => (/^Flooring is chosen by the tenant/.test(x) ? 'Flooring to be confirmed by the tenant to suit their needs' : x));
+      await store.put('units', '1a', d);
+    }
+    done['2026-10-miller-photos'] = new Date().toISOString();
+    await store.put('admin', 'migrations', done);
+    console.log('Applied update: Miller photos and flooring note.');
+  }
   if (!done['2026-10-postcode']) {
     const p = await store.get('site', 'property');
     if (p) { const d = strip(p); if (!d.postcode) d.postcode = 'CV35 0LA'; if (!d.county) d.county = 'Warwickshire'; await store.put('site', 'property', d); }
